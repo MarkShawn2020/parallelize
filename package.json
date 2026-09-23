@@ -10,15 +10,15 @@
   },
   "scripts": {
     "dev": "pnpm run --parallel \"/^dev:/\"",
-    "dev:server": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "dev:server": "tsx watch --use-env-proxy --env-file-if-exists=.env src/server.ts",
     "dev:web": "vite",
-    "start": "NODE_ENV=production tsx --env-file-if-exists=.env src/server.ts",
-    "bench": "tsx --env-file-if-exists=.env src/cli/bench.ts",
-    "smoke:live": "tsx --env-file-if-exists=.env src/cli/smoke.ts",
+    "start": "NODE_ENV=production tsx --use-env-proxy --env-file-if-exists=.env src/server.ts",
+    "bench": "tsx --use-env-proxy --env-file-if-exists=.env src/cli/bench.ts",
+    "smoke:live": "tsx --use-env-proxy --env-file-if-exists=.env src/cli/smoke.ts",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "evomap": "tsx --env-file-if-exists=.env src/cli/evomap.ts"
+    "evomap": "tsx --use-env-proxy --env-file-if-exists=.env src/cli/evomap.ts"
   },
   "dependencies": {
     "react": "^19.3.0",

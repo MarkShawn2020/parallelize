@@ -1,10 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG, parseRunConfig, providerEnv, SPAWN_MODELS } from "./config";
+import { DEFAULT_CONFIG, parseRunConfig, providerEnv, SPAWN_MODELS, REAL_JEV_ESCALATION, REAL_VERIFY_THRESHOLD } from "./config";
 import { MOCK_LLM_LATENCY_MS } from "./providers/mock";
 
 describe("parseRunConfig", () => {
-  it("merges a minimal request over the defaults", () => {
-    expect(parseRunConfig({ mode: "single" })).toEqual({ ...DEFAULT_CONFIG, mode: "single" });
+  it("merges a minimal request over the defaults, with thresholds calibrated for real Jev and LLM", () => {
+    expect(parseRunConfig({ mode: "single" })).toEqual({
+      ...DEFAULT_CONFIG,
+      mode: "single",
+      escalationThreshold: REAL_JEV_ESCALATION,
+      verifyThreshold: REAL_VERIFY_THRESHOLD,
+    });
+  });
+
+  it("keeps the simulation thresholds for mock providers and honours explicit thresholds", () => {
+    const mock = parseRunConfig({ mode: "swarm-jev", judge: "mock", llm: "mock" });
+    expect(mock.escalationThreshold).toBe(DEFAULT_CONFIG.escalationThreshold);
+    expect(mock.verifyThreshold).toBe(DEFAULT_CONFIG.verifyThreshold);
+    const explicit = parseRunConfig({ mode: "swarm-jev", escalationThreshold: 0.35, verifyThreshold: 0.6 });
+    expect(explicit).toMatchObject({ escalationThreshold: 0.35, verifyThreshold: 0.6 });
   });
 
   it("rejects a missing or unknown mode and non-object bodies", () => {

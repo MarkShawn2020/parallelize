@@ -13,6 +13,8 @@ export const RUNS_DIR = resolve(PROJECT_ROOT, "runs");
  */
 export const SPAWN_MODELS = ["deepseek/deepseek-v4.1-flash", "qwen/qwen3.8-flash"] as const;
 export const DEFAULT_LLM_MODEL = "deepseek/deepseek-v4.1-flash";
+export const REAL_JEV_ESCALATION = 0.2;
+export const REAL_VERIFY_THRESHOLD = 0.4;
 
 export const DEFAULT_CONFIG: RunConfig = {
   mode: "swarm-jev",
@@ -198,6 +200,11 @@ export function parseRunConfig(body: unknown): RunConfig {
   // The planner sets a research run's size, so n mirrors it for every display that reads config.n.
   if (cfg.taskSource.kind === "research") cfg.n = cfg.taskSource.claims + cfg.taskSource.canaries;
   if (cfg.llm === "mock" && body.leaseMs === undefined) cfg.leaseMs = mockLeaseMs(cfg.simPace);
+  // Calibrated on 48 real hard tasks (DeepSeek V4.1 Flash, reasoning off): Jev's verify noul separates wrong from
+  // right answers only weakly (AUC 0.67) and |2p-1| is usually small, so 0.5 escalated 40/48 decisions. At 0.2 about
+  // a quarter escalate; a 0.4 verify line sends half the proposals to review and catches two thirds of the wrong ones.
+  if (cfg.judge === "jev" && body.escalationThreshold === undefined) cfg.escalationThreshold = REAL_JEV_ESCALATION;
+  if (cfg.llm === "openrouter" && body.verifyThreshold === undefined) cfg.verifyThreshold = REAL_VERIFY_THRESHOLD;
   return cfg;
 }
 

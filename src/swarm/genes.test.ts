@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Domain, Gene } from "../core/types";
-import { MemoryGenePool, adoptCopy, createGene, geneFitness } from "./genes";
+import { MemoryGenePool, adoptCopy, createGene, geneFitness, provenGeneBlocks } from "./genes";
 
 function gene(id: string, opts: { domain?: Domain; now?: number; wins?: number; trials?: number } = {}): Gene {
   return {
@@ -163,5 +163,18 @@ describe("MemoryGenePool", () => {
 
     pool.record("arith-old", true);
     expect(pool.best("arithmetic")?.id).toBe("arith-old");
+  });
+});
+
+describe("provenGeneBlocks", () => {
+  const held = (wins: number, trials: number) => ({ ...createGene({ id: "g", domain: "rates", text: "t", origin: "c1", lineageId: "g", now: 0 }), wins, trials });
+  it("blocks an equal-or-weaker peer gene once the held gene is proven", () => {
+    expect(provenGeneBlocks(held(3, 3), 0.8)).toBe(true); // held fitness 4/5 = 0.8
+    expect(provenGeneBlocks(held(3, 3), 0.81)).toBe(false); // the offer is fitter: worth a judgment
+  });
+  it("never blocks without a proven held gene", () => {
+    expect(provenGeneBlocks(undefined, 0)).toBe(false);
+    expect(provenGeneBlocks(held(1, 1), 0)).toBe(false); // too few trials
+    expect(provenGeneBlocks(held(0, 4), 0)).toBe(false); // fitness 1/6 below the proven line
   });
 });

@@ -89,3 +89,16 @@ export class MemoryGenePool implements GenePool {
     return geneFitness(g);
   }
 }
+
+const PROVEN_TRIALS = 2;
+const PROVEN_FITNESS = 0.6;
+
+/**
+ * Zero-token rule for a peer's gene: a receiver already holding a proven gene for the domain skips the adopt
+ * judgment when the offered gene is no fitter. Stuck-task lookups do not use this: a stuck solver wants a change.
+ */
+export function provenGeneBlocks(held: Gene | undefined, offeredFitness: number): boolean {
+  if (!held || held.trials < PROVEN_TRIALS) return false;
+  const fitness = geneFitness(held);
+  return fitness >= PROVEN_FITNESS && offeredFitness <= fitness;
+}

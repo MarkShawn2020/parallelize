@@ -48,7 +48,7 @@ import {
   SOLVE_SYSTEM,
   VERIFY_QUESTION,
 } from "./cell";
-import { adoptCopy, createGene, geneFitness } from "./genes";
+import { adoptCopy, createGene, provenGeneBlocks } from "./genes";
 import { disputeVerdictConfirmed, isDisagreement, resolveAfterProposal, scoreGroups, verifyVerdictConfirmed } from "./resolve";
 import type { Resolution, ScoredGroup } from "./resolve";
 import { sanitizeGeneText } from "./sanitize";
@@ -139,9 +139,7 @@ const ECHO_SOLVES = 2;
 const ECHO_RESERVE_MS = 5000;
 const DECLINES_BEFORE_FORCE = 3;
 const ADOPT_THRESHOLD = 0.5;
-/** A held gene this proven makes a peer's equal-or-weaker gene not worth a judgment (zero-token rule). */
-const PROVEN_TRIALS = 2;
-const PROVEN_FITNESS = 0.6;
+
 const DISPUTE_MIN_CONFIDENCE = 0.6;
 const HEARTBEAT_MS = 5000;
 const LIBRARY_K = 3;
@@ -1186,11 +1184,8 @@ export class Swarm {
     }
     if (from.sender && this.trust.get(from.sender.id) < this.config.reviewTrust) return reject("untrusted");
     if (from.sender) {
-      // Stuck-task lookups skip this rule on purpose: a stuck solver wants a different strategy.
       const held = receiver.pool.best(gene.domain);
-      if (held && held.trials >= PROVEN_TRIALS && geneFitness(held) >= PROVEN_FITNESS && from.fitness <= geneFitness(held)) {
-        return reject("rule", { held: held.id });
-      }
+      if (provenGeneBlocks(held, from.fitness)) return reject("rule", { held: held?.id });
     }
 
     const offered: Gene = { ...gene, text: clean.text };
