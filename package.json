@@ -1,0 +1,46 @@
+{
+  "name": "parallelize",
+  "version": "0.1.0",
+  "private": true,
+  "description": "System-1 swarm: Jev handles coordination reflexes, LLM handles hard thinking. EvoTavern 4th SECTION 9.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm run --parallel \"/^dev:/\"",
+    "dev:server": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "dev:web": "vite",
+    "start": "NODE_ENV=production tsx --env-file-if-exists=.env src/server.ts",
+    "bench": "tsx --env-file-if-exists=.env src/cli/bench.ts",
+    "smoke:live": "tsx --env-file-if-exists=.env src/cli/smoke.ts",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-force-graph-2d": "^1.29.1",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^6.1.1",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

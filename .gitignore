@@ -1,0 +1,8 @@
+node_modules/
+web/dist/
+runs/*
+!runs/.gitkeep
+.env
+.env.*
+!.env.example
+.DS_Store
