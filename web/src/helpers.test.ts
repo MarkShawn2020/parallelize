@@ -3,6 +3,9 @@ import type { ProtocolMessage } from "../../src/core/types";
 import { byNaturalId, fmtPctOrDash, safeHttpUrl, shortModel } from "./format";
 import { describeBody, describeMessage } from "./protocolText";
 import { primaryTarget, toggleSelected } from "./selection";
+import { rankGenes } from "./components/GeneChips";
+import { geneTitle } from "./components/GeneCard";
+import type { GeneView } from "./state";
 
 describe("toggleSelected", () => {
   it("adds, removes and keeps at most three picks, dropping the oldest", () => {
@@ -54,5 +57,28 @@ describe("format helpers", () => {
     expect(["c10", "c2", "c1"].sort(byNaturalId)).toEqual(["c1", "c2", "c10"]);
     expect(fmtPctOrDash(undefined)).toBe("—");
     expect(fmtPctOrDash(0.25)).toBe("25.0%");
+  });
+});
+
+describe("gene chips", () => {
+  const gene = (id: string, adopted: number): GeneView => ({
+    id,
+    cellId: "c01",
+    domain: "rates",
+    text: id,
+    at: 0,
+    gossiped: adopted,
+    adoptedBy: Array.from({ length: adopted }, (_, i) => `c0${i + 2}`),
+    rejectedBy: [],
+  });
+
+  it("keeps spreading genes on screen when newer genes with no takers arrive", () => {
+    const genes = [gene("old-popular", 3), gene("mid", 1), gene("new-a", 0), gene("new-b", 0)];
+    expect(rankGenes(genes, 3).map((g) => g.id)).toEqual(["old-popular", "mid", "new-b"]);
+  });
+
+  it("drops markdown emphasis from the title line", () => {
+    expect(geneTitle("**Strategy:** Break the timeline into phases\nmore")).toBe("Strategy: Break the timeline into phases");
+    expect(geneTitle("## Rates")).toBe("Rates");
   });
 });

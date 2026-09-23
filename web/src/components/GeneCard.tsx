@@ -45,8 +45,9 @@ export function fromLibraryGene(g: LibraryGene): GeneCardData {
   };
 }
 
+/** First line without markdown emphasis or heading marks, which models often put on a gene's first line. */
 export function geneTitle(text: string): string {
-  return text.split("\n", 1)[0] ?? text;
+  return (text.split("\n", 1)[0] ?? text).replace(/\*\*|__|`/g, "").replace(/^#+\s*/, "");
 }
 
 const SOURCE = {
@@ -108,7 +109,7 @@ export function GeneCard({ gene, onClose }: { gene: GeneCardData; onClose: () =>
           {gene.assetId && <span className="text-s2 tabular-nums">asset {gene.assetId}</span>}
         </div>
 
-        <p className="border-l-2 border-gene bg-panel-2 px-4 py-3 text-lg leading-relaxed whitespace-pre-wrap">{gene.text}</p>
+        <p className="border-l-2 border-gene bg-panel-2 px-4 py-3 text-lg leading-relaxed whitespace-pre-wrap">{gene.text.replace(/\*\*|__/g, "")}</p>
 
         <div className="grid grid-cols-2 gap-px bg-grid sm:grid-cols-4">
           {gene.source === "run" ? (

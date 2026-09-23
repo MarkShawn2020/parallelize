@@ -7,3 +7,4 @@ runs/*
 !.env.example
 .DS_Store
 .claude/
+runs-archive/

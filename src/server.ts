@@ -15,11 +15,12 @@ import type {
   KillResponse,
   LibraryResponse,
   ListRunsResponse,
+  RunReportResponse,
   SpawnResponse,
   StartRunResponse,
 } from "./core/api";
 import { SimpleEventBus } from "./core/events";
-import type { EventBus, RunConfig, RunSummary, SwarmEvent } from "./core/types";
+import type { EventBus, ResearchReport, RunConfig, RunSummary, SwarmEvent } from "./core/types";
 import { FileExperienceLibrary } from "./protocol/library";
 import { EvoMapClient } from "./providers/evomap";
 import { startRun } from "./run";
@@ -29,6 +30,8 @@ import { configureNetwork } from "./providers/net";
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_ECHO_CELLS = 3;
 const RECENT_GENES = 20;
+// Run ids are "<mode>-<yyyymmdd>-<hhmmss>-<hex>"; anything else never reaches the filesystem.
+const RUN_ID = /^[a-z][a-z0-9-]{0,79}$/;
 const STATIC_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -156,6 +159,27 @@ async function listSummaries(runsDir: string): Promise<RunSummary[]> {
   return runs.filter((r): r is RunSummary => r !== undefined).sort((a, b) => b.startedAt - a.startedAt);
 }
 
+/** The last research.report event of a saved run, so a past research verdict can be shown during another run. */
+async function readReport(runsDir: string, runId: string): Promise<ResearchReport | undefined> {
+  let text: string;
+  try {
+    text = await readFile(join(runsDir, runId, "events.jsonl"), "utf8");
+  } catch {
+    return undefined;
+  }
+  let report: ResearchReport | undefined;
+  for (const line of text.split("\n")) {
+    if (!line.includes('"research.report"')) continue;
+    try {
+      const e: unknown = JSON.parse(line);
+      if (isRecord(e) && e.type === "research.report" && isRecord(e.report)) report = e.report as unknown as ResearchReport;
+    } catch {
+      // A torn last line from a crashed run is skipped.
+    }
+  }
+  return report;
+}
+
 async function serveStatic(res: ServerResponse, root: string, pathname: string): Promise<void> {
   let rel: string;
   try {
@@ -270,6 +294,14 @@ export function createAppServer(opts: AppServerOptions): AppServer {
     if (path === "/api/runs" && method === "POST") {
       return sendJson(res, 201, await launch(await readJson(req)));
     }
+    const reportPath = /^\/api\/runs\/([^/]+)\/report$/.exec(path);
+    if (reportPath && method === "GET") {
+      const runId = decodeURIComponent(reportPath[1] ?? "");
+      if (!RUN_ID.test(runId)) throw new HttpError(400, "invalid run id");
+      const report = await readReport(opts.runsDir, runId);
+      if (!report) throw new HttpError(404, `no research report for ${runId}`);
+      return sendJson(res, 200, { runId, report } satisfies RunReportResponse);
+    }
     const action = /^\/api\/runs\/([^/]+)\/(kill|echo|stop|spawn|compromise|fault)$/.exec(path);
     if (action && method === "POST") {
       const runId = decodeURIComponent(action[1] ?? "");
@@ -302,7 +334,7 @@ export function createAppServer(opts: AppServerOptions): AppServer {
       }
     }
     const known = path === "/api/runs" || path === "/api/library" || path === "/api/library/reset" || path === "/api/config/defaults";
-    if (path.startsWith("/api/")) throw new HttpError(known || action ? 405 : 404, "no such endpoint");
+    if (path.startsWith("/api/")) throw new HttpError(known || action || reportPath ? 405 : 404, "no such endpoint");
     if (staticDir && (method === "GET" || method === "HEAD")) return serveStatic(res, staticDir, path);
     throw new HttpError(404, "not found");
   }

@@ -26,6 +26,11 @@ const DIFFICULTIES: ReadonlyArray<[Difficulty, string, string]> = [
 const LIMITS = { n: [1, 500], cells: [1, 64], claims: [3, 10], canaries: [0, 6], simPace: [1, 40] } as const;
 // An offline demo should feel like a real run (~1.5-3 s per solve), not finish in five seconds.
 const DEMO_SIM_PACE = 10;
+// Real solves take 2.6 s median and 5.2 s p99, so a killed cell's task comes back within seconds, not the 30 s default.
+const REAL_LEASE_MS = 12_000;
+// Two failed reviews (four disagreeing answers) happen about once per run; one dispute happens 6-8 times, so the
+// EvoMap lookup shows within the first half minute. Benchmarks keep the default of two.
+const DEMO_STUCK_AFTER = 1;
 export const IDEA_MAX = 500;
 const PUBLISH_WARNING = "会把通过验证门的 Gene 公开发布到 EvoMap";
 
@@ -89,10 +94,11 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
       llm,
       inherit,
       evomapLookup,
+      ...(evomapLookup ? { stuckAfter: DEMO_STUCK_AFTER } : {}),
       evomapPublish: evomapPublish && !noNode,
       ...(research ? {} : { n: clampInt(n, LIMITS.n, fallback?.n ?? 40) }),
       ...(simulating ? { simPace: clampInt(simPace, LIMITS.simPace, DEMO_SIM_PACE) } : {}),
-      ...(llm === "openrouter" ? { llmReasoning: reasoning } : {}),
+      ...(llm === "openrouter" ? { llmReasoning: reasoning, leaseMs: REAL_LEASE_MS } : {}),
       taskSource,
     };
     try {

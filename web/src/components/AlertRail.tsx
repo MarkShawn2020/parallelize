@@ -59,7 +59,7 @@ export function AlertRail({ jevDown, llmDown, quarantines, compromises, guards, 
         <Alert
           tone="danger"
           title={`已隔离 ${quarantine.cellId}`}
-          detail={`信任 trust ${quarantine.trust.toFixed(2)} · ${quarantine.reason}`}
+          detail={`信任 trust ${quarantine.trust.toFixed(3)} · ${quarantine.reason}`}
         />
       )}
       {guard && (

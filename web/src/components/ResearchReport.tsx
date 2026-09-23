@@ -4,6 +4,8 @@ import type { TaskView } from "../state";
 
 interface Props {
   report: Report | null;
+  /** Set when the report comes from an earlier research run rather than the live one. */
+  savedRunId?: string;
   /** Idea of the active research run, shown before the report arrives. */
   idea: string | null;
   tasks: Record<string, TaskView>;
@@ -14,7 +16,7 @@ function canaryMark(c: ResearchClaimResult): { text: string; className: string }
   return c.verdict === c.canary ? { text: "✓", className: "text-ok" } : { text: "✗", className: "text-danger" };
 }
 
-export function ResearchReport({ report, idea, tasks }: Props) {
+export function ResearchReport({ report, savedRunId, idea, tasks }: Props) {
   if (!report) {
     if (!idea) {
       return (
@@ -52,6 +54,11 @@ export function ResearchReport({ report, idea, tasks }: Props) {
 
   return (
     <div className="flex flex-col gap-3 px-3 py-2">
+      {savedRunId && (
+        <div className="border border-s1/50 px-2 py-1 text-[11px] text-s1">
+          上一次点子验证 last research run · <span className="tabular-nums">{savedRunId}</span>
+        </div>
+      )}
       <div className="flex flex-col gap-1">
         <span className="text-[11px] text-muted">点子 Idea</span>
         <p className="text-base leading-snug text-fg">{report.idea}</p>

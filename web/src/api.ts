@@ -9,6 +9,7 @@ import type {
   KillResponse,
   LibraryResponse,
   ListRunsResponse,
+  RunReportResponse,
   SpawnRequest,
   SpawnResponse,
   StartRunRequest,
@@ -39,6 +40,8 @@ const isSpawn: Guard<SpawnResponse> = (v): v is SpawnResponse =>
   isObject(v) && typeof v.cellId === "string" && typeof v.model === "string";
 const isLibrary: Guard<LibraryResponse> = (v): v is LibraryResponse =>
   isObject(v) && typeof v.genes === "number" && Array.isArray(v.recent);
+const isReport: Guard<RunReportResponse> = (v): v is RunReportResponse =>
+  isObject(v) && typeof v.runId === "string" && isObject(v.report);
 const isAny: Guard<unknown> = (_v): _v is unknown => true;
 
 async function request<T>(method: "GET" | "POST", path: string, guard: Guard<T>, body?: unknown): Promise<T> {
@@ -112,6 +115,10 @@ export async function stopRun(runId: string): Promise<void> {
 
 export function listRuns(): Promise<ListRunsResponse> {
   return request("GET", "/runs", isRuns);
+}
+
+export function getReport(runId: string): Promise<RunReportResponse> {
+  return request("GET", runPath(runId, "report"), isReport);
 }
 
 export function getDefaults(): Promise<DefaultsResponse> {

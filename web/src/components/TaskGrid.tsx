@@ -32,6 +32,8 @@ export function TaskGrid({ tasks, focusTask, onFocusTask }: Props) {
   const count = (s: TaskStatus) => list.filter((t) => t.status === s).length;
   const wrong = list.filter((t) => t.status === "accepted" && t.correct === false).length;
   const hits = list.filter((t) => t.hit).length;
+  // On stage the hit dot is a few pixels wide; the header count jumps straight to a hit, EvoMap first.
+  const hitTarget = list.find((t) => t.hit === "evomap") ?? list.find((t) => t.hit);
   const cellSize = list.length > 200 ? "minmax(9px,1fr)" : list.length > 100 ? "minmax(14px,1fr)" : "minmax(20px,1fr)";
   const focused = focusTask ? tasks[focusTask] : undefined;
   const focusedRef = useRef<HTMLButtonElement>(null);
@@ -47,7 +49,14 @@ export function TaskGrid({ tasks, focusTask, onFocusTask }: Props) {
       right={
         <span className="text-xs text-muted tabular-nums">
           {list.length} 个 · <span className="text-ok">✓ {count("accepted") - wrong}</span> <span className="text-danger">✗ {wrong}</span>
-          {hits > 0 && <span className="text-s2"> · 命中 {hits}</span>}
+          {hits > 0 && hitTarget && (
+            <>
+              {" · "}
+              <button type="button" onClick={() => onFocusTask(hitTarget.id)} className="text-s2 underline-offset-2 hover:underline" title="打开命中的任务 open a hit task">
+                命中 {hits}
+              </button>
+            </>
+          )}
         </span>
       }
     >

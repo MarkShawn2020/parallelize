@@ -7,6 +7,9 @@ export type ConnectionStatus = "connecting" | "live" | "offline";
 
 const MAX_BACKOFF_MS = 5000;
 const BASE_BACKOFF_MS = 250;
+// Browsers pause requestAnimationFrame in hidden or occluded windows (a stage browser behind the slides,
+// a side pane); without this timer the dashboard lags seconds behind and live buttons stay disabled after Start.
+const FLUSH_FALLBACK_MS = 100;
 
 const reduceBatch = (s: RunView, batch: SwarmEvent[]): RunView => batch.reduce(reduce, s);
 
@@ -18,13 +21,17 @@ export function useRunStream(): { view: RunView; status: ConnectionStatus } {
     let socket: WebSocket | null = null;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let frame = 0;
+    let fallback: ReturnType<typeof setTimeout> | undefined;
     let attempt = 0;
     let disposed = false;
     let queue: SwarmEvent[] = [];
 
     // A replay on connect can be thousands of events; apply them once per frame, not once each.
     const flush = () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(fallback);
       frame = 0;
+      fallback = undefined;
       const batch = queue;
       queue = [];
       dispatch(batch);
@@ -42,7 +49,10 @@ export function useRunStream(): { view: RunView; status: ConnectionStatus } {
         const e = parseEvent(msg.data);
         if (!e) return;
         queue.push(e);
-        if (!frame) frame = requestAnimationFrame(flush);
+        if (!frame) {
+          frame = requestAnimationFrame(flush);
+          fallback = setTimeout(flush, FLUSH_FALLBACK_MS);
+        }
       };
       // onerror is always followed by onclose, which owns the retry.
       ws.onclose = () => {
@@ -58,6 +68,7 @@ export function useRunStream(): { view: RunView; status: ConnectionStatus } {
       disposed = true;
       clearTimeout(retry);
       cancelAnimationFrame(frame);
+      clearTimeout(fallback);
       socket?.close();
     };
   }, []);

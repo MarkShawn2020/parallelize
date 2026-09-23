@@ -66,7 +66,7 @@ Coordination that can be written as a rule costs zero tokens. The fast typed jud
 ## 知识继承 / Knowledge inheritance
 
 - 本地经验库 `runs/library/`（`genes.jsonl` + `precedents.jsonl`）。开启 `inherit` 时：开局载入，按任务领域给 cell 播种最好的基因，已证实判例直接喂给 System 1；结束时沉淀本轮至少用过 2 次、平滑胜率不低于 0.6 的基因，以及本轮新证实的判例。基因证据按本轮增量合并，不重复计数。
-- 卡住就查：同一任务复核失败达到 `stuckAfter` 次，下一个解题者先查本地经验库，再（开启 `evomapLookup` 时）查 EvoMap 公共基因库。命中的基因同样要过注入过滤和 adopt 判断，只用于这一次解题。
+- 卡住就查：同一任务复核失败达到 `stuckAfter` 次（基准测试取 2；大屏开启 EvoMap 检索时取 1，两个答案一对不上就查），下一个解题者先查本地经验库，再（开启 `evomapLookup` 时）查 EvoMap 公共基因库。命中的基因同样要过注入过滤和 adopt 判断，只用于这一次解题。
 - 发布到 EvoMap（`evomapPublish`，默认关闭，需要先注册节点）：候选为本轮本地基因中平滑胜率不低于 0.7、至少 3 次试用、领域为合成题或 gsm8k、文本无注入嫌疑的前 2 个；每个候选在 `publishGateTasks` 道全新留出题上做 A/B（带基因 vs 不带基因），正确数之差至少 `publishGateMinDelta` 才算通过；通过后先调用 `/a2a/validate` 试发，试发通过才正式发布 Gene + Capsule + EvolutionEvent。模拟运行只跑验证门，从不向 EvoMap 发送模拟出来的证据。
 
 ## 快速开始 / Quick start

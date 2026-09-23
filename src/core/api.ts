@@ -1,5 +1,5 @@
 // HTTP + WebSocket contract between src/server.ts and web/. Keys never cross this boundary.
-import type { LibraryGene, Mode, RunConfig, RunSummary } from "./types";
+import type { LibraryGene, Mode, ResearchReport, RunConfig, RunSummary } from "./types";
 
 /** POST /api/runs -> 201 StartRunResponse | 409 (a run is active) | 400 ApiError */
 export type StartRunRequest = Partial<Omit<RunConfig, "mode">> & { mode: Mode };
@@ -31,6 +31,12 @@ export interface EchoResponse {
 export interface ListRunsResponse {
   runs: RunSummary[];
   activeRunId: string | null;
+}
+
+/** GET /api/runs/:runId/report -> 200 for a finished research run, 404 when the run has no report. */
+export interface RunReportResponse {
+  runId: string;
+  report: ResearchReport;
 }
 
 /** GET /api/config/defaults -> 200 */

@@ -24,6 +24,7 @@ import { MODE_LABEL } from "./labels";
 import { toggleSelected } from "./selection";
 import { useDefaults } from "./useDefaults";
 import { useRunStream, type ConnectionStatus } from "./useRunStream";
+import { useSavedReport } from "./useSavedReport";
 
 const GRAPH_HEIGHT = 400;
 const CHART_HEIGHT = 150;
@@ -52,6 +53,8 @@ export default function App() {
   const conn = STATUS[status];
   const taskSource = view.config?.taskSource;
   const idea = taskSource?.kind === "research" ? taskSource.idea : null;
+  const saved = useSavedReport(tab === "report" && !view.report && !idea);
+  const shownSaved = view.report || idea ? null : saved;
 
   useEffect(() => {
     setPicked([]);
@@ -225,7 +228,9 @@ export default function App() {
                 onOpenGene={setGene}
               />
             )}
-            {tab === "report" && <ResearchReport report={view.report} idea={idea} tasks={view.tasks} />}
+            {tab === "report" && (
+              <ResearchReport report={view.report ?? shownSaved?.report ?? null} savedRunId={shownSaved?.runId} idea={idea} tasks={view.tasks} />
+            )}
           </SidePanel>
         </div>
       </main>

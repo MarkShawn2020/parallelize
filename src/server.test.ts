@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import { sleep } from "./core/rng";
-import type { DefaultsResponse, LibraryResponse, ListRunsResponse } from "./core/api";
-import type { LibraryGene, SwarmEvent } from "./core/types";
+import type { DefaultsResponse, LibraryResponse, ListRunsResponse, RunReportResponse } from "./core/api";
+import type { LibraryGene, ResearchReport, SwarmEvent } from "./core/types";
 import { FileExperienceLibrary } from "./protocol/library";
 import { EvoMapClient } from "./providers/evomap";
 import { createAppServer } from "./server";
@@ -158,6 +158,21 @@ describe("server", () => {
     expect(replayed[0]).toMatchObject({ type: "run.started", runId });
     expect(replayed.at(-1)).toMatchObject({ type: "run.finished", runId });
     late.close();
+  });
+
+  it("serves a saved research run's report and refuses run ids that could leave the runs directory", async () => {
+    const report: ResearchReport = { idea: "rooftop solar", claims: [], canaryPassed: 2, canaryTotal: 2, recommendation: "inconclusive", rule: "r" };
+    const runDir = join(dir, "runs", "swarm-jev-20260923-154422-f678");
+    await mkdir(runDir, { recursive: true });
+    const lines = [{ type: "log", level: "info", message: "x" }, { type: "research.report", runId: "r", at: 1, report }];
+    await writeFile(join(runDir, "events.jsonl"), `${lines.map((l) => JSON.stringify(l)).join("\n")}\n{"type":"research.rep`);
+
+    const ok = await fetch(`${base}/api/runs/swarm-jev-20260923-154422-f678/report`);
+    expect(ok.status).toBe(200);
+    expect((await ok.json()) as RunReportResponse).toEqual({ runId: "swarm-jev-20260923-154422-f678", report });
+    expect((await fetch(`${base}/api/runs/single-20260923-000000-0000/report`)).status).toBe(404);
+    expect((await fetch(`${base}/api/runs/..%2F..%2Fsecret/report`)).status).toBe(400);
+    expect((await post("/api/runs/swarm-jev-20260923-154422-f678/report", {})).status).toBe(405);
   });
 
   it("refuses WebSocket upgrades on other paths", async () => {
