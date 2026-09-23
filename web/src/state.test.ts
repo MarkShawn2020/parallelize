@@ -473,3 +473,231 @@ describe("reduce v2 events", () => {
     });
   });
 });
+
+describe("stage narration", () => {
+  const ev = (e: Record<string, unknown>): SwarmEvent => ({ runId: "A", ...e }) as SwarmEvent;
+  const shorts = (s: RunView) => s.faultLog.map((l) => l.short);
+
+  /** c1 solves, hands off for review, c2 claims the verifying task and the answer is accepted. */
+  function reviewed(taskId: string, at: number, independentSources = 2): SwarmEvent[] {
+    return [
+      ev({ type: "task.claimed", at, taskId, cellId: "c1" }),
+      ev({ type: "task.proposed", at, taskId, cellId: "c1", proposalId: `${taskId}p1`, sawProposals: [] }),
+      ev({ type: "task.verifying", at, taskId, cellId: "c1" }),
+      ev({ type: "task.claimed", at, taskId, cellId: "c2" }),
+      ev({ type: "task.accepted", at, taskId, answer: "2", independentSources, correct: true }),
+    ];
+  }
+
+  function decision(over: Record<string, unknown>): SwarmEvent {
+    return ev({
+      type: "judge.decision",
+      at: 5,
+      decision: {
+        id: "d",
+        runId: "A",
+        key: "verify",
+        tier: "system1",
+        escalated: false,
+        answer: { type: "noul", noul: 0.2 },
+        confidence: 0.9,
+        latencyMs: 400,
+        usage: { inputTokens: 10, outputTokens: 0, costUsd: 0.001 },
+        precedentsUsed: 0,
+        at: 5,
+        ...over,
+      },
+    });
+  }
+
+  it("run.started opens the story and clears story, fault log, tally and pending", () => {
+    const busy = play([started("A"), ...spawned("A"), ev({ type: "cell.killed", at: 2, cellId: "c1" }), decision({})]);
+    expect(busy.faultLog).toHaveLength(1);
+    expect(busy.tally.jevCalls).toBe(1);
+
+    const fresh = play([started("B", 10)], busy);
+    expect(fresh.story).toHaveLength(1);
+    expect(fresh.story[0]).toMatchObject({ tone: "info", at: 10 });
+    expect(fresh.story[0]?.text).toBe("2 个 Agent 开跑：3 道普通数学题放上黑板，谁有空谁去领，没有指挥官");
+    expect(fresh.faultLog).toEqual([]);
+    expect(fresh.tally).toEqual(initialRunView.tally);
+    expect(fresh.pending).toEqual(initialRunView.pending);
+  });
+
+  it("an accepted echo task yields the re-review line with the post-alarm verifier", () => {
+    const s = play([
+      started("A"),
+      ...spawned("A"),
+      ev({ type: "task.claimed", at: 2, taskId: "t1", cellId: "c1" }),
+      ev({ type: "task.proposed", at: 3, taskId: "t1", cellId: "c1", proposalId: "p1", sawProposals: [] }),
+      ev({ type: "task.verifying", at: 4, taskId: "t1", cellId: "c1" }),
+      ev({ type: "echo.detected", at: 5, taskId: "t1", proposalIds: ["p1", "p2"], agreeing: 2, independentSources: 1 }),
+      ev({ type: "task.claimed", at: 6, taskId: "t1", cellId: "c2" }),
+      ev({ type: "task.accepted", at: 7, taskId: "t1", answer: "2", independentSources: 2, correct: true }),
+    ]);
+    expect(s.story.at(-1)).toMatchObject({ tone: "ok", taskId: "t1" });
+    expect(s.story.at(-1)?.text).toBe("第 1 题 重新复核：c2 没看过原答案，独立做出结果 → 2 个独立来源，收下");
+    expect(s.story.some((l) => l.text.includes("独立重做"))).toBe(false);
+    expect(shorts(s)).toEqual(["第 1 题 回声警报：2 份答案 1 个出处", "第 1 题 由 c2 独立复核通过"]);
+    expect(s.pending.echo).toEqual({});
+    expect(s.pending.verifier).toEqual({});
+  });
+
+  it("a reopened task claimed by another cell counts a takeover, timed from the kill", () => {
+    const s = play([
+      started("A"),
+      ...spawned("A"),
+      ev({ type: "task.claimed", at: 2, taskId: "t1", cellId: "c1" }),
+      ev({ type: "cell.killed", at: 3000, cellId: "c1" }),
+      ev({ type: "task.reopened", at: 4000, taskId: "t1", previousCell: "c1" }),
+      ev({ type: "task.claimed", at: 12_000, taskId: "t1", cellId: "c2" }),
+    ]);
+    expect(s.tally.takeovers).toBe(1);
+    expect(s.story.at(-1)).toMatchObject({ tone: "ok", taskId: "t1", text: "第 1 题 由 c2 接手，距 c1 掉线 9 秒" });
+    expect(shorts(s)).toEqual(["c1 被拔掉", "第 1 题 退回黑板", "第 1 题 由 c2 接手（9 秒）"]);
+    expect(s.story.find((l) => l.text.startsWith("第 1 题 退回黑板"))?.text).toBe("第 1 题 退回黑板（原来在 c1 手里）");
+    expect(s.pending.reopened).toEqual({});
+  });
+
+  it("a takeover without a kill is timed from the reopen; the previous holder reclaiming is no takeover", () => {
+    const s = play([
+      started("A"),
+      ...spawned("A"),
+      ev({ type: "task.reopened", at: 1000, taskId: "t1", previousCell: "c1" }),
+      ev({ type: "task.claimed", at: 2500, taskId: "t1", cellId: "c2" }),
+      ev({ type: "task.reopened", at: 3000, taskId: "t2", previousCell: "c1" }),
+      ev({ type: "task.claimed", at: 3100, taskId: "t2", cellId: "c1" }),
+    ]);
+    expect(s.tally.takeovers).toBe(1);
+    expect(s.story.some((l) => l.text === "第 1 题 由 c2 接手，距退回黑板 1.5 秒")).toBe(true);
+    expect(s.pending.reopened).toEqual({});
+  });
+
+  it("repeated poison genes from one sender update a single keyed line in place", () => {
+    const first = play([
+      started("A"),
+      ...spawned("A"),
+      ev({ type: "cell.compromised", at: 2, cellId: "c1" }),
+      ev({ type: "gene.created", at: 3, geneId: "g1", cellId: "c1", domain: "rates", text: "x" }),
+      ev({ type: "gene.rejected", at: 4, geneId: "g1", cellId: "c2", reason: "judge" }),
+    ]);
+    const line = first.story.find((l) => l.key === "poison:c1");
+    expect(line?.text).toBe("c2 拒收了 c1 发来的 Gene：它的 Jev 判断没用");
+
+    const s = play(
+      [
+        ev({ type: "task.claimed", at: 5, taskId: "t1", cellId: "c2" }),
+        ev({ type: "gene.rejected", at: 6, geneId: "g1", cellId: "c3", reason: "recollision" }),
+        ev({ type: "gene.created", at: 7, geneId: "g2", cellId: "c2", domain: "logic", text: "y" }),
+        ev({ type: "gene.rejected", at: 8, geneId: "g2", cellId: "c1", reason: "recollision" }),
+        ev({ type: "gene.rejected", at: 9, geneId: "g1", cellId: "c4", reason: "sanitize" }),
+      ],
+      first,
+    );
+    const lines = s.story.filter((l) => l.key === "poison:c1");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ id: line?.id, at: 9, text: "c1 发的毒 Gene 已被邻居拒收 3 次" });
+    expect(s.story.at(-1)?.key).toBe("poison:c1");
+    expect(s.tally.poisonBlocked).toBe(3);
+    expect(shorts(s)).toEqual(["c1 被入侵", "邻居开始拒收 c1 的毒 Gene"]);
+  });
+
+  it("a second review acceptance inside the 4 s window adds no line but later ones do", () => {
+    const s = play([started("A"), ...spawned("A"), ...reviewed("t1", 1000), ...reviewed("t2", 3000), ...reviewed("t3", 6000)]);
+    const lines = s.story.filter((l) => l.text.includes("独立重做"));
+    expect(lines.map((l) => l.taskId)).toEqual(["t1", "t3"]);
+    expect(lines[0]?.text).toBe("第 1 题：c2 独立重做，和 c1 的答案一致 → 两个独立来源，收下");
+    expect(s.faultLog).toEqual([]);
+  });
+
+  it("cell.killed lands in the fault log with the lease hint", () => {
+    const s = play([started("A"), ...spawned("A"), ev({ type: "cell.killed", at: 5, cellId: "c1" })]);
+    expect(s.faultLog).toHaveLength(1);
+    expect(s.faultLog[0]).toMatchObject({ tone: "danger", short: "c1 被拔掉" });
+    expect(s.faultLog[0]?.text).toBe("c1 被拔掉了。它手上的任务租约到期（约 1 秒）后会退回黑板");
+    expect(s.faultLog[0]?.id).toBe(s.story.at(-1)?.id);
+    expect(s.pending.killedAt).toEqual({ c1: 5 });
+  });
+
+  it("repeated denials of a hacked cell update one line with a count and log the fault once", () => {
+    const deny = (at: number) => ev({ type: "permission.denied", at, cellId: "c1", action: "propose", reason: "quarantined" });
+    const s = play([
+      started("A"),
+      ev({ type: "cell.spawned", at: 0, cellId: "c1", neighbors: [] }),
+      ev({ type: "cell.compromised", at: 0, cellId: "c1" }),
+      deny(1),
+      deny(2),
+      deny(3),
+    ]);
+    expect(s.story.filter((l) => l.key === "deny:c1").map((l) => l.text)).toEqual(["c1 想交答案，被拦下：已被隔离 ×3"]);
+    expect(shorts(s)).toEqual(["c1 被入侵", "c1 越权操作被拦下"]);
+  });
+
+  it("repeated echo alarms on one task keep one story line and one fault entry", () => {
+    const echo = (at: number, agreeing: number) =>
+      ev({ type: "echo.detected", at, taskId: "t1", proposalIds: [], agreeing, independentSources: 1 });
+    const s = play([started("A"), echo(1, 2), echo(2, 3), echo(3, 4)]);
+    expect(s.story.filter((l) => l.key === "echo:t1").map((l) => l.text)).toEqual([
+      "回声警报：第 1 题 有 4 份一样的答案，但只有 1 个出处 → 虚假共识，退回黑板，只让没看过答案的 Agent 复核",
+    ]);
+    expect(shorts(s)).toEqual(["第 1 题 回声警报：2 份答案 1 个出处"]);
+  });
+
+  it("an honest cell denied after it was killed is not narrated as misbehaviour", () => {
+    const s = play([
+      started("A"),
+      ev({ type: "cell.spawned", at: 0, cellId: "c2", neighbors: [] }),
+      ev({ type: "permission.denied", at: 1, cellId: "c2", action: "propose", reason: "dead" }),
+    ]);
+    expect(s.story.some((l) => l.key === "deny:c2")).toBe(false);
+    expect(shorts(s)).toEqual([]);
+  });
+
+  it("a late joiner's line is completed in place with its model family once the card arrives", () => {
+    const s = play([
+      started("A", 0),
+      ev({ type: "cell.spawned", at: LATE_JOIN_MS + 10, cellId: "c9", neighbors: ["c1"] }),
+      ev({ type: "cell.card", at: LATE_JOIN_MS + 11, card: card({ agentId: "c9", model: "deepseek/deepseek-v4.1-flash" }) }),
+      ev({ type: "cell.card", at: LATE_JOIN_MS + 12, card: card({ agentId: "c9", model: "deepseek/deepseek-v4.1-flash" }) }),
+    ]);
+    const joins = s.story.filter((l) => l.key === "join:c9");
+    expect(joins.map((l) => l.text)).toEqual(["新 Agent c9 加入（DeepSeek）：亮出能力卡就开始领任务，没改代码、没重启"]);
+    expect(shorts(s)).toEqual(["c9（DeepSeek） 加入"]);
+    expect(s.faultLog[0]?.at).toBe(LATE_JOIN_MS + 10);
+  });
+
+  it("judge decisions accumulate Jev calls, cost and latency; disputes at System 2 are narrated", () => {
+    const s = play([
+      started("A"),
+      decision({}),
+      decision({ id: "d2", tier: "system2", escalated: true, latencyMs: 3000, usage: { inputTokens: 1, outputTokens: 1, costUsd: 0.01 } }),
+      decision({ id: "d3", tier: "system2", escalated: true, guarded: true }),
+      decision({ id: "d4", key: "dispute", tier: "system2", escalated: true, taskId: "t2" }),
+    ]);
+    expect(s.tally).toMatchObject({ jevCalls: 3, s1Latencies: [400] });
+    expect(s.tally.jevCostUsd).toBeCloseTo(0.001);
+    expect(s.story.at(-1)).toMatchObject({ tone: "s2", taskId: "t2", text: "第 2 题 两个答案对不上，Jev 拿不准 → 交给大模型裁决" });
+  });
+
+  it("gene adoption opens one keyed line and counts adopters in place", () => {
+    const s = play([
+      started("A"),
+      ...spawned("A"),
+      ev({ type: "gene.created", at: 1, geneId: "g1", cellId: "c1", domain: "rates", text: "x" }),
+      ev({ type: "gene.gossiped", at: 2, geneId: "g1", fromCell: "c1", toCell: "c2" }),
+      ev({ type: "gene.adopted", at: 2, geneId: "g1", cellId: "c2" }),
+      ev({ type: "gene.adopted", at: 3, geneId: "g1", cellId: "c3" }),
+    ]);
+    expect(s.story.filter((l) => l.key === "gene:g1").map((l) => l.text)).toEqual(["c1 的比率题经验，已被 2 个邻居收下"]);
+    expect(s.tally.gossiped).toBe(1);
+  });
+
+  it("story and fault log are capped at 40", () => {
+    const events: SwarmEvent[] = [started("A")];
+    for (let i = 0; i < 60; i++) events.push(ev({ type: "cell.compromised", at: i, cellId: `c${i}` }));
+    const s = play(events);
+    expect(s.story).toHaveLength(CAP.story);
+    expect(s.faultLog).toHaveLength(CAP.faultLog);
+    expect(s.faultLog.at(-1)?.short).toBe("c59 被入侵");
+  });
+});

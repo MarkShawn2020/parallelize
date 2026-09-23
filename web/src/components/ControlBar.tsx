@@ -11,6 +11,8 @@ interface Props {
   running: boolean;
   simulated: boolean;
   hasRun: boolean;
+  /** The stage dock starts runs with these presets while the bar itself stays hidden; resolves to an error text or null. */
+  registerStart?: (start: (() => Promise<string | null>) | null) => void;
 }
 
 type Judge = RunConfig["judge"];
@@ -34,7 +36,7 @@ const DEMO_STUCK_AFTER = 1;
 export const IDEA_MAX = 500;
 const PUBLISH_WARNING = "会把通过验证门的 Gene 公开发布到 EvoMap";
 
-export function ControlBar({ defaults, defaultsError, running, simulated, hasRun }: Props) {
+export function ControlBar({ defaults, defaultsError, running, simulated, hasRun, registerStart }: Props) {
   const [mode, setMode] = useState<Mode>("swarm-jev");
   const [source, setSource] = useState<Source>("math");
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
@@ -75,7 +77,8 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
   const noNode = defaults?.evomapNode === false;
   const canStart = !running && !busy && (!research || ideaText.length > 0);
 
-  const start = async () => {
+  const start = async (): Promise<string | null> => {
+    if (!canStart) return running ? "运行中，先停止当前这一轮" : research ? "点子验证要先填写点子" : null;
     setBusy(true);
     setNotice(null);
     const fallback = defaults?.defaults;
@@ -98,18 +101,31 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
       evomapPublish: evomapPublish && !noNode,
       ...(research ? {} : { n: clampInt(n, LIMITS.n, fallback?.n ?? 40) }),
       ...(simulating ? { simPace: clampInt(simPace, LIMITS.simPace, DEMO_SIM_PACE) } : {}),
-      ...(llm === "openrouter" ? { llmReasoning: reasoning, leaseMs: REAL_LEASE_MS } : {}),
+      // Mock runs use the same lease so a killed cell's task comes back on the same beat when the booth falls back offline.
+      leaseMs: REAL_LEASE_MS,
+      ...(llm === "openrouter" ? { llmReasoning: reasoning } : {}),
       taskSource,
     };
     try {
       const res = await startRun(req);
       setNotice({ text: `已启动 started ${res.runId}`, error: false });
+      return null;
     } catch (e) {
-      setNotice({ text: `启动 start: ${errorText(e)}`, error: true });
+      const text = `启动 start: ${errorText(e)}`;
+      setNotice({ text, error: true });
+      return text;
     } finally {
       setBusy(false);
     }
   };
+
+  // The dock always calls the latest start, so presets changed in the drawer apply without re-registering.
+  const startRef = useRef(start);
+  startRef.current = start;
+  useEffect(() => {
+    registerStart?.(() => startRef.current());
+    return () => registerStart?.(null);
+  }, [registerStart]);
 
   const shownNotice = notice ?? (defaultsError ? { text: defaultsError, error: true } : null);
 

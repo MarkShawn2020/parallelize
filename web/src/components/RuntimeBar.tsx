@@ -3,6 +3,7 @@ import { SWARM_MODES, type Mode } from "../../../src/core/types";
 import { compromise, errorText, injectEcho, kill, resetLibrary, setFault, spawn, stopRun } from "../api";
 import { shortModel } from "../format";
 import { MAX_SELECTED, primaryTarget } from "../selection";
+import { family } from "../stageText";
 import { Button, Select } from "./controls";
 
 interface Props {
@@ -16,6 +17,11 @@ interface Props {
   models: string[];
   onConsumeSelection: (ids: string[]) => void;
   onLibraryReset: () => void;
+  /** Stage dock: plain labels, projector-size buttons, plus start and settings. Same API calls either way. */
+  variant?: "stage";
+  onStart?: () => Promise<string | null>;
+  onSettings?: () => void;
+  settingsOpen?: boolean;
 }
 
 const DEFAULT_MODEL = "";
@@ -84,6 +90,70 @@ export function RuntimeBar(props: Props) {
       return "经验库已清空 library reset";
     });
   };
+
+  if (props.variant === "stage") {
+    const start = () => {
+      if (!props.onStart) return;
+      setBusy("开始");
+      setNotice(null);
+      void props.onStart().then((err) => {
+        setBusy(null);
+        if (err) setNotice({ text: err, error: true });
+      });
+    };
+    return (
+      <div className="flex flex-col gap-1 border border-grid bg-panel/90 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={start} disabled={running || !idle || !props.onStart} tone="accent" size="stage">
+            {running ? "运行中…" : "开始"}
+          </Button>
+          <span aria-hidden className="mx-1 h-8 w-px bg-grid" />
+          <Button onClick={hack} disabled={!cellActions} tone="danger" size="stage">
+            入侵一个 → {target ?? "随机"}
+          </Button>
+          <Button onClick={echo} disabled={!running || !swarm || !idle} tone="danger" size="stage">
+            {echoCells.length ? `让 ${echoCells.join("、")} 互相抄答案` : "让 3 个 Agent 互相抄答案"}
+          </Button>
+          <Button onClick={killCell} disabled={!cellActions} tone="danger" size="stage">
+            拔掉一个 → {target ?? "随机"}
+          </Button>
+          <Button onClick={toggleJev} disabled={!running || mode !== "swarm-jev" || !idle} tone={jevDown ? "accent" : "danger"} size="stage">
+            {jevDown ? "恢复 Jev" : "断开 Jev"}
+          </Button>
+          <span aria-hidden className="mx-1 h-8 w-px bg-grid" />
+          <Button onClick={addAgent} disabled={!running || !swarm || !idle} tone="accent" size="stage">
+            加入新 Agent
+          </Button>
+          <Select
+            value={model}
+            options={modelOptions}
+            labels={{ [DEFAULT_MODEL]: "同款模型", ...Object.fromEntries(models.map((m) => [m, family(m)])) }}
+            onChange={setModel}
+            disabled={!running || !swarm || !idle}
+            ariaLabel="新 Agent 用的模型"
+            className="text-base"
+          />
+          <span aria-hidden className="mx-1 h-8 w-px bg-grid" />
+          <Button onClick={stop} disabled={!running || !idle} size="stage">
+            停止
+          </Button>
+          <Button onClick={() => props.onSettings?.()} disabled={false} size="stage" tone={props.settingsOpen ? "accent" : "plain"}>
+            设置
+          </Button>
+        </div>
+        {(selected.length > 0 || notice?.error) && (
+          <div className="flex flex-wrap items-center gap-x-6 text-base">
+            {selected.length > 0 && <span className="text-fg">已选：{selected.join("、")}（在图上点节点，最多 {MAX_SELECTED} 个）</span>}
+            {notice?.error && (
+              <span role="alert" className="text-danger">
+                {notice.text}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border border-grid bg-panel/90 px-3 py-2 text-sm">

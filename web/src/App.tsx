@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SWARM_MODES } from "../../src/core/types";
 import { errorText, kill } from "./api";
 import { AlertRail } from "./components/AlertRail";
@@ -23,10 +23,26 @@ import { fmtClock, fmtInt } from "./format";
 import { MODE_LABEL } from "./labels";
 import { toggleSelected } from "./selection";
 import { useDefaults } from "./useDefaults";
+import { EvidencePage } from "./stage/EvidencePage";
+import { ResearchPage } from "./stage/ResearchPage";
+import { StageHeader, type StagePage } from "./stage/StageHeader";
+import { StageLive } from "./stage/StageLive";
 import { useRunStream, type ConnectionStatus } from "./useRunStream";
+import { initialRunView } from "./state";
 import { useSavedReport } from "./useSavedReport";
 
 const GRAPH_HEIGHT = 400;
+// The stage view scales every rem-sized element with the screen so it reads from the back of a booth.
+// Bounded by height too: a 1920x1080 screen would otherwise overflow vertically at 20px.
+const STAGE_ROOT_FONT = "clamp(16px, min(1.05vw, 1.78vh), 20px)";
+const STAGE_PAGES: Record<string, StagePage> = { "1": "live", "2": "evidence", "3": "research" };
+
+type ViewMode = "stage" | "eng";
+
+const initialViewMode = (): ViewMode => (new URLSearchParams(window.location.search).get("view") === "eng" ? "eng" : "stage");
+
+const isTyping = (t: EventTarget | null): boolean =>
+  t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable);
 const CHART_HEIGHT = 150;
 
 const STATUS: Record<ConnectionStatus, { label: string; dot: string }> = {
@@ -45,15 +61,59 @@ export default function App() {
   const [gene, setGene] = useState<GeneCardData | null>(null);
   const [libraryEpoch, setLibraryEpoch] = useState(0);
   const [killError, setKillError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
+  const [page, setPage] = useState<StagePage>("live");
+  const [drawer, setDrawer] = useState(false);
+  const startRef = useRef<(() => Promise<string | null>) | null>(null);
+  const registerStart = useCallback((start: (() => Promise<string | null>) | null) => {
+    startRef.current = start;
+  }, []);
+  const stage = viewMode === "stage";
+  // The server replays the last run to every new connection; between judges the presenter dismisses it to get the idle card back.
+  const [dismissedRunId, setDismissedRunId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!stage) return;
+    const root = document.documentElement;
+    root.style.fontSize = STAGE_ROOT_FONT;
+    return () => {
+      root.style.fontSize = "";
+    };
+  }, [stage]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      const next = STAGE_PAGES[e.key];
+      if (e.key === "e" || e.key === "E") setViewMode((v) => (v === "stage" ? "eng" : "stage"));
+      else if (e.key === "0") dismissRef.current();
+      else if (next) {
+        setViewMode("stage");
+        setPage(next);
+      } else if (e.key === "Escape") setDrawer(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const running = view.runId !== null && view.summary === null;
+  const standby = view.runId !== null && view.runId === dismissedRunId && !running;
+  const stageView = standby ? initialRunView : view;
+
+  const dismissRef = useRef(() => {});
+  dismissRef.current = () => {
+    if (view.runId && !running) {
+      setDismissedRunId(view.runId);
+      setPage("live");
+    }
+  };
   const cells = Object.values(view.cells);
   const liveCells = cells.filter((c) => c.alive).length;
   const selected = picked.filter((id) => view.cells[id]?.alive);
   const conn = STATUS[status];
   const taskSource = view.config?.taskSource;
   const idea = taskSource?.kind === "research" ? taskSource.idea : null;
-  const saved = useSavedReport(tab === "report" && !view.report && !idea);
+  const saved = useSavedReport((stage ? page === "research" : tab === "report") && !view.report && !idea);
   const shownSaved = view.report || idea ? null : saved;
 
   useEffect(() => {
@@ -114,7 +174,17 @@ export default function App() {
   ].join(":");
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[1920px] flex-col gap-2 p-2">
+    <div className={`mx-auto flex max-w-[1920px] flex-col gap-2 p-2 ${stage ? "h-screen" : "min-h-screen"}`}>
+      {stage ? (
+        <StageHeader
+          view={stageView}
+          page={page}
+          offline={status === "offline"}
+          onPage={setPage}
+          onEngineering={() => setViewMode("eng")}
+          onStandby={() => dismissRef.current()}
+        />
+      ) : (
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border border-grid bg-panel/90 px-3 py-1.5">
         <h1 className="font-display text-2xl font-semibold tracking-[0.18em]">
           <span className="text-accent">並列化</span> <span className="text-fg">PARALLELIZE</span>{" "}
@@ -143,17 +213,29 @@ export default function App() {
             <span className={`size-2.5 rounded-full ${conn.dot}`} />
             <span className={status === "offline" ? "text-danger" : "text-muted"}>{conn.label}</span>
           </span>
+          <button type="button" onClick={() => setViewMode("stage")} className="border border-accent px-2 py-0.5 text-accent hover:bg-accent hover:text-bg">
+            讲解视图 E
+          </button>
         </div>
       </header>
+      )}
 
-      <ControlBar
-        defaults={defaults}
-        defaultsError={defaultsError}
-        running={running}
-        simulated={view.simulated}
-        hasRun={view.runId !== null}
-      />
+      {/* Always mounted so the presets survive view switches; on stage it opens as the settings drawer. */}
+      <div className={stage && !drawer ? "hidden" : ""}>
+        <ControlBar
+          defaults={defaults}
+          defaultsError={defaultsError}
+          running={running}
+          simulated={view.simulated}
+          hasRun={view.runId !== null}
+          registerStart={registerStart}
+        />
+      </div>
       <RuntimeBar
+        variant={stage ? "stage" : undefined}
+        onStart={() => startRef.current?.() ?? Promise.resolve("控制栏还没就绪，稍等再点")}
+        onSettings={() => setDrawer((d) => !d)}
+        settingsOpen={drawer}
         runId={view.runId}
         running={running}
         mode={view.mode}
@@ -165,10 +247,32 @@ export default function App() {
         onLibraryReset={() => setLibraryEpoch((n) => n + 1)}
       />
       {killError && (
-        <div role="alert" className="border border-danger/60 px-3 py-1 text-xs text-danger">
+        <div role="alert" className={`border border-danger/60 px-3 py-1 text-danger ${stage ? "text-base" : "text-xs"}`}>
           {killError}
         </div>
       )}
+      {stage ? (
+        page === "live" ? (
+          <StageLive
+            view={stageView}
+            running={running}
+            selected={selected}
+            onToggle={toggleCell}
+            onKill={killCell}
+            onOpenGene={setGene}
+            onEvidence={() => setPage("evidence")}
+          />
+        ) : (
+          <div className="min-h-0 flex-1 overflow-auto">
+            {page === "evidence" ? (
+              <EvidencePage />
+            ) : (
+              <ResearchPage report={view.report ?? shownSaved?.report ?? null} saved={!view.report && shownSaved !== null} idea={idea} />
+            )}
+          </div>
+        )
+      ) : (
+      <>
       <AlertRail
         jevDown={running && view.faults.jev}
         llmDown={running && view.faults.llm}
@@ -236,6 +340,8 @@ export default function App() {
       </main>
 
       <CompareTable refreshKey={`${online}:${view.summary?.runId ?? ""}`} className="max-h-[260px] xl:max-h-[220px]" />
+      </>
+      )}
 
       {gene && <GeneCard key={gene.id} gene={gene} onClose={() => setGene(null)} />}
     </div>

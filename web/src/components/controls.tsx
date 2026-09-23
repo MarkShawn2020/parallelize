@@ -123,15 +123,18 @@ export function Button(props: {
   disabled: boolean;
   tone?: ButtonTone;
   title?: string;
+  /** Stage buttons scale with the root font size so they stay legible on a projector. */
+  size?: "stage";
   children: ReactNode;
 }) {
+  const size = props.size === "stage" ? "px-4 py-2 text-base" : "px-3 py-1.5 text-[15px]";
   return (
     <button
       type="button"
       onClick={props.onClick}
       disabled={props.disabled}
       title={props.title}
-      className={`shrink-0 border px-3 py-1.5 font-display text-[15px] tracking-wide whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
+      className={`shrink-0 border ${size} font-display tracking-wide whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
         BUTTON_TONE[props.tone ?? "plain"]
       }`}
     >

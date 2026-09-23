@@ -17,6 +17,8 @@
   --color-ok: #62e36f;
   --color-verify: #8aa6ff;
   --color-gene: #d68cff;
+  /* Stage view: "something went wrong" orange, so amber (s2) can mean only "handed to the LLM". */
+  --color-alert: #ff7a3d;
 
   --font-mono: "JetBrains Mono", "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, "PingFang SC",
     "Noto Sans SC", monospace;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { RunSummary } from "../../../src/core/types";
+import type { Mode, RunSummary } from "../../../src/core/types";
 import { errorText, listRuns } from "../api";
 import { fmtAir, fmtMs, fmtPct, fmtPctOrDash, fmtTokens, fmtUsd } from "../format";
 import { MODE_HINT, MODE_LABEL } from "../labels";
@@ -28,6 +28,22 @@ const COLUMNS = [
 
 const isResearch = (r: RunSummary) => r.config.taskSource?.kind === "research";
 
+/** Weakest organisation first, so the table reads the way the evidence page does. */
+const MODE_ORDER: readonly Mode[] = ["single", "swarm-solo", "subagent", "swarm-rules", "swarm-llm", "swarm-jev", "single-vote"];
+
+/** Simulated and research runs are not comparable accuracy results, so they sink to the bottom. */
+const isDemoted = (r: RunSummary) => r.simulated || isResearch(r);
+
+export function orderRuns(runs: readonly RunSummary[]): RunSummary[] {
+  const rank = (m: Mode) => {
+    const i = MODE_ORDER.indexOf(m);
+    return i < 0 ? MODE_ORDER.length : i;
+  };
+  return [...runs].sort(
+    (a, b) => Number(isDemoted(a)) - Number(isDemoted(b)) || rank(a.mode) - rank(b.mode) || b.startedAt - a.startedAt,
+  );
+}
+
 export function CompareTable({ refreshKey, className }: Props) {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +53,7 @@ export function CompareTable({ refreshKey, className }: Props) {
     listRuns()
       .then((r) => {
         if (cancelled) return;
-        setRuns(r.runs);
+        setRuns(orderRuns(r.runs));
         setError(null);
       })
       .catch((e: unknown) => {
@@ -47,8 +63,6 @@ export function CompareTable({ refreshKey, className }: Props) {
       cancelled = true;
     };
   }, [refreshKey]);
-
-  const bestAir = runs.reduce<RunSummary | null>((best, r) => (r.metrics.air > (best?.metrics.air ?? 0) ? r : best), null);
 
   return (
     <Panel
@@ -88,22 +102,20 @@ export function CompareTable({ refreshKey, className }: Props) {
             </tr>
           )}
           {runs.map((r) => {
-            const best = r === bestAir;
             const m = r.metrics;
             const research = isResearch(r);
             return (
               <tr
                 key={r.runId}
-                className={`border-b border-grid/60 ${best ? "bg-accent/10 text-accent" : "text-fg"}`}
+                className={`border-b border-grid/60 text-fg ${isDemoted(r) ? "opacity-50" : ""}`}
                 title={r.aborted ? `中止 aborted: ${r.aborted}` : `${r.runId} · ${MODE_HINT[r.mode] ?? ""}`}
               >
-                <td className={`border-l-2 px-2.5 py-1 whitespace-nowrap ${best ? "border-accent" : "border-transparent"}`}>
+                <td className="px-2.5 py-1 whitespace-nowrap">
                   {MODE_LABEL[r.mode] ?? r.mode}
                   {r.config.inherit && <span className="ml-2 bg-gene/20 px-1 text-[10px] text-gene">继承</span>}
                   {research && <span className="ml-1 bg-s1/20 px-1 text-[10px] text-s1">研究</span>}
                   {r.simulated && <span className="ml-1 bg-warn/20 px-1 text-[10px] text-warn">SIM</span>}
                   {r.aborted && <span className="ml-1 bg-danger/20 px-1 text-[10px] text-danger">中止</span>}
-                  {best && <span className="ml-1 bg-accent px-1 text-[10px] text-bg">最佳 AIR</span>}
                 </td>
                 <td className="px-2.5 py-1">{m.tasksTotal}</td>
                 <td className="px-2.5 py-1 whitespace-nowrap">
@@ -119,7 +131,7 @@ export function CompareTable({ refreshKey, className }: Props) {
                 <td className="px-2.5 py-1">{fmtTokens(m.coordinationTokens)}</td>
                 <td className="px-2.5 py-1">{fmtPctOrDash(m.coordinationShare)}</td>
                 <td className="px-2.5 py-1">{fmtUsd(m.costUsd)}</td>
-                <td className={`px-2.5 py-1 font-semibold ${best ? "text-accent" : ""}`}>{fmtAir(m.air)}</td>
+                <td className="px-2.5 py-1">{fmtAir(m.air)}</td>
                 <td className="px-2.5 py-1">{fmtPct(m.escalationRate)}</td>
                 <td className={`px-2.5 py-1 ${m.passThroughErrorRate > 0 ? "text-danger" : ""}`}>{fmtPctOrDash(m.passThroughErrorRate)}</td>
                 <td className={`px-2.5 py-1 ${m.falseAcceptVerifiedRate > 0 ? "text-danger" : ""}`}>

@@ -13,6 +13,8 @@ import type {
   SwarmEvent,
   TaskStatus,
 } from "../../src/core/types";
+import { fmtClock, truncate } from "./format";
+import { DENY_ACTION_ZH, DOMAIN_ZH, JUDGE_KEY_ZH, REC_ZH, REJECT_ZH, denyReason, family, taskName } from "./stageText";
 
 const REJECT_REASON: Record<string, string> = {
   judge: "判定 judge",
@@ -32,6 +34,9 @@ export const CAP = {
   hits: 50,
   alarms: 50,
   genes: 100,
+  story: 40,
+  faultLog: 40,
+  latencies: 500,
 } as const;
 
 /** A cell spawned this long after run.started joined at runtime (plug-and-play), not in the initial burst. */
@@ -130,6 +135,42 @@ export interface LibraryView {
   published: LibraryPublished | null;
 }
 
+export type StoryTone = "info" | "ok" | "warn" | "danger" | "gene" | "s2";
+
+export interface StoryLine {
+  id: number;
+  at: number;
+  tone: StoryTone;
+  /** Full narration line for the stage view. */
+  text: string;
+  /** Set for faults; the line is also appended to faultLog. */
+  short?: string;
+  /** Lines with the same key are updated in place (moved to newest, id kept). */
+  key?: string;
+  taskId?: string;
+}
+
+export interface Tally {
+  jevCalls: number;
+  jevCostUsd: number;
+  s1Latencies: number[];
+  reviews: number;
+  gossiped: number;
+  poisonBlocked: number;
+  takeovers: number;
+}
+
+interface StoryPending {
+  reopened: Record<string, { prev?: string; at: number }>;
+  echo: Record<string, number>;
+  verifier: Record<string, string>;
+  killedAt: Record<string, number>;
+  /** Throttle clocks per routine line kind, in event time. */
+  lastAt: Record<string, number>;
+  /** Repeat counts behind keyed lines ("deny:c3", "poison:c3"); the capped alarm lists cannot count past their cap. */
+  counts: Record<string, number>;
+}
+
 export interface RunView {
   runId: string | null;
   mode: Mode | null;
@@ -158,7 +199,14 @@ export interface RunView {
   library: LibraryView;
   report: ResearchReport | null;
   summary: RunSummary | null;
-  /** Monotonic feed line id, used as a stable React key. */
+  /** Stage narration, oldest first. */
+  story: StoryLine[];
+  /** Every fault line of the run, oldest first; survives the end of the run. */
+  faultLog: StoryLine[];
+  /** Counters accumulated here because the lists they derive from are capped. */
+  tally: Tally;
+  pending: StoryPending;
+  /** Monotonic feed and story line id, used as a stable React key. */
   seq: number;
 }
 
@@ -189,13 +237,20 @@ export const initialRunView: RunView = {
   library: { loaded: null, hits: [], published: null },
   report: null,
   summary: null,
+  story: [],
+  faultLog: [],
+  tally: { jevCalls: 0, jevCostUsd: 0, s1Latencies: [], reviews: 0, gossiped: 0, poisonBlocked: 0, takeovers: 0 },
+  pending: { reopened: {}, echo: {}, verifier: {}, killedAt: {}, lastAt: {}, counts: {} },
   seq: 0,
 };
 
 export function reduce(s: RunView, e: SwarmEvent): RunView {
   if (e.type === "run.started") return startRun(e);
   if (e.runId !== s.runId) return s;
+  return narrate(apply(s, e), e);
+}
 
+function apply(s: RunView, e: SwarmEvent): RunView {
   switch (e.type) {
     case "run.finished": {
       const m = e.summary.metrics;
@@ -487,7 +542,371 @@ function startRun(e: Ev<"run.started">): RunView {
     tasks,
   };
   const text = `启动 Run ${e.runId} · ${e.mode} · ${e.tasks.length} tasks${e.simulated ? " · SIMULATION" : ""}`;
-  return log(view, e.at, "info", text);
+  const n = e.tasks.length;
+  const src = e.config.taskSource;
+  const opening =
+    src.kind === "research"
+      ? `点子拆成 ${n} 条论断放上黑板，${e.config.cells} 个 Agent 各自核查，没有指挥官`
+      : `${e.config.cells} 个 Agent 开跑：${n} 道${src.kind === "synthetic" && src.difficulty === "hard" ? "困难" : "普通"}数学题放上黑板，谁有空谁去领，没有指挥官`;
+  return story(log(view, e.at, "info", text), e.at, "info", opening);
+}
+
+// ---------------------------------------------------------------- stage narration
+
+interface StoryOpts {
+  short?: string;
+  key?: string;
+  taskId?: string;
+  /** [kind, ms]: skip a new line if the last line of this kind is younger than ms (event time). */
+  throttle?: readonly [string, number];
+}
+
+const THROTTLE = {
+  review: ["review", 4000],
+  dispute: ["dispute", 4000],
+  gene: ["gene", 5000],
+  failed: ["failed", 3000],
+} as const;
+
+function story(s: RunView, at: number, tone: StoryTone, text: string, opts: StoryOpts = {}): RunView {
+  const { short, key, taskId, throttle } = opts;
+  const i = key === undefined ? -1 : s.story.findIndex((l) => l.key === key);
+  const old = s.story[i];
+  let pending = s.pending;
+  // Fault lines and in-place updates are never throttled.
+  if (!old && throttle && short === undefined) {
+    const [kind, ms] = throttle;
+    const last = pending.lastAt[kind];
+    if (last !== undefined && at - last < ms) return s;
+    pending = { ...pending, lastAt: { ...pending.lastAt, [kind]: at } };
+  }
+  const seq = old ? s.seq : s.seq + 1;
+  const line: StoryLine = {
+    id: old?.id ?? seq,
+    at,
+    tone,
+    text,
+    ...(short !== undefined ? { short } : {}),
+    ...(key !== undefined ? { key } : {}),
+    ...(taskId !== undefined ? { taskId } : {}),
+  };
+  let faultLog = s.faultLog;
+  if (short !== undefined) {
+    // A keyed rewrite (a joiner's model family arriving) corrects its fault entry where it stands.
+    faultLog =
+      old && faultLog.some((l) => l.id === old.id)
+        ? faultLog.map((l) => (l.id === old.id ? { ...l, text, short } : l))
+        : capPush(faultLog, line, CAP.faultLog);
+  }
+  const rest = old ? s.story.filter((_, j) => j !== i) : s.story;
+  return { ...s, seq, pending, faultLog, story: capPush(rest, line, CAP.story) };
+}
+
+function withPending(s: RunView, patch: Partial<StoryPending>): RunView {
+  return { ...s, pending: { ...s.pending, ...patch } };
+}
+
+function withTally(s: RunView, patch: Partial<Tally>): RunView {
+  return { ...s, tally: { ...s.tally, ...patch } };
+}
+
+function omit<V>(rec: Record<string, V>, key: string): Record<string, V> {
+  if (!(key in rec)) return rec;
+  const { [key]: _drop, ...rest } = rec;
+  return rest;
+}
+
+function count(s: RunView, key: string): [RunView, number] {
+  const k = (s.pending.counts[key] ?? 0) + 1;
+  return [withPending(s, { counts: { ...s.pending.counts, [key]: k } }), k];
+}
+
+/** "9.3" under ten seconds, whole seconds above. */
+function secs(ms: number): string {
+  const x = Math.max(0, ms) / 1000;
+  return String(x < 10 ? Math.round(x * 10) / 10 : Math.round(x));
+}
+
+function joinText(cellId: string, fam: string): { text: string; short: string } {
+  const tag = fam ? `（${fam}）` : "";
+  return {
+    text: `新 Agent ${cellId} 加入${tag}：亮出能力卡就开始领任务，没改代码、没重启`,
+    short: `${cellId}${tag} 加入`,
+  };
+}
+
+/** A different cell picking up a task that went back to the board. */
+function takeover(s: RunView, at: number, taskId: string, cellId: string): RunView {
+  const r = s.pending.reopened[taskId];
+  if (!r) return s;
+  const next = withPending(s, { reopened: omit(s.pending.reopened, taskId) });
+  if (cellId === r.prev) return next;
+  const t = taskName(taskId);
+  const killedAt = r.prev !== undefined ? s.pending.killedAt[r.prev] : undefined;
+  const wait = secs(at - (killedAt ?? r.at));
+  const since = killedAt !== undefined ? `距 ${r.prev} 掉线 ${wait} 秒` : `距退回黑板 ${wait} 秒`;
+  return story(withTally(next, { takeovers: s.tally.takeovers + 1 }), at, "ok", `${t} 由 ${cellId} 接手，${since}`, {
+    short: `${t} 由 ${cellId} 接手（${wait} 秒）`,
+    taskId,
+  });
+}
+
+function settle(s: RunView, taskId: string): RunView {
+  const p = s.pending;
+  return withPending(s, { reopened: omit(p.reopened, taskId), echo: omit(p.echo, taskId), verifier: omit(p.verifier, taskId) });
+}
+
+/** Stage-view layer on top of the engineering reducer: story, fault log and tallies. Reads the post-event state. */
+function narrate(s: RunView, e: SwarmEvent): RunView {
+  switch (e.type) {
+    case "run.finished": {
+      const m = e.summary.metrics;
+      if (e.summary.aborted) return story(s, e.at, "warn", `本轮已停止：已收下 ${m.accepted} 题，答对 ${m.correct} 题`);
+      const tail = `用时 ${fmtClock(m.elapsedMs)}，花费 $${m.costUsd.toFixed(2)}${e.summary.simulated ? "（离线模拟，不作为成绩）" : ""}`;
+      const head = m.accuracyApplicable === false ? `核查 ${m.tasksTotal} 条论断` : `${m.tasksTotal} 题答对 ${m.correct} 题`;
+      return story(s, e.at, "ok", `本轮结束：${head}，${tail}`);
+    }
+    case "cell.spawned": {
+      if (!s.cells[e.cellId]?.late) return s;
+      const { text, short } = joinText(e.cellId, family(s.cards[e.cellId]?.model));
+      return story(s, e.at, "ok", text, { short, key: `join:${e.cellId}` });
+    }
+    case "cell.card": {
+      const id = e.card.agentId;
+      const fam = family(e.card.model);
+      const old = s.story.find((l) => l.key === `join:${id}`);
+      if (!fam || !old || old.text.includes(`（${fam}）`)) return s;
+      const { text, short } = joinText(id, fam);
+      return story(s, old.at, old.tone, text, { short, key: `join:${id}` });
+    }
+    case "cell.killed": {
+      const lease = s.config ? `（约 ${secs(s.config.leaseMs)} 秒）` : "";
+      return story(
+        withPending(s, { killedAt: { ...s.pending.killedAt, [e.cellId]: e.at } }),
+        e.at,
+        "danger",
+        `${e.cellId} 被拔掉了。它手上的任务租约到期${lease}后会退回黑板`,
+        { short: `${e.cellId} 被拔掉` },
+      );
+    }
+    case "task.claimed": {
+      const t = s.tasks[e.taskId];
+      if (!t || isSettled(t) || t.proposers.includes(e.cellId)) return s;
+      // The board emits task.verifying only for the proposer handing off; whoever then claims a verifying task is its verifier.
+      const next =
+        t.status === "verifying" ? withPending(s, { verifier: { ...s.pending.verifier, [e.taskId]: e.cellId } }) : s;
+      return takeover(next, e.at, e.taskId, e.cellId);
+    }
+    case "task.verifying": {
+      const t = s.tasks[e.taskId];
+      if (!t || isSettled(t) || t.proposers.includes(e.cellId)) return s;
+      return takeover(withPending(s, { verifier: { ...s.pending.verifier, [e.taskId]: e.cellId } }), e.at, e.taskId, e.cellId);
+    }
+    case "task.reopened": {
+      const t = s.tasks[e.taskId];
+      if (!t || isSettled(t)) return s;
+      const name = taskName(e.taskId);
+      const reopened = { ...s.pending.reopened, [e.taskId]: { ...(e.previousCell ? { prev: e.previousCell } : {}), at: e.at } };
+      return story(
+        withPending(s, { reopened }),
+        e.at,
+        "warn",
+        `${name} 退回黑板${e.previousCell ? `（原来在 ${e.previousCell} 手里）` : ""}`,
+        { short: `${name} 退回黑板`, taskId: e.taskId },
+      );
+    }
+    case "task.accepted": {
+      const name = taskName(e.taskId);
+      const verifier = s.pending.verifier[e.taskId];
+      const echoed = s.pending.echo[e.taskId] !== undefined;
+      const next = settle(s, e.taskId);
+      if (echoed && e.independentSources < 2) {
+        // Never call a one-source accept "independently verified"; say what actually happened.
+        return story(next, e.at, "warn", `${name} 没等到第二个独立来源，按现有答案收下（只有 1 个出处）`, {
+          short: `${name} 只有 1 个出处就收下`,
+          taskId: e.taskId,
+        });
+      }
+      if (echoed) {
+        const who = verifier ?? "另一个 Agent";
+        return story(
+          next,
+          e.at,
+          "ok",
+          `${name} 重新复核：${who} 没看过原答案，独立做出结果 → ${e.independentSources} 个独立来源，收下`,
+          { short: `${name} 由 ${who} 独立复核通过`, taskId: e.taskId },
+        );
+      }
+      if (e.independentSources < 2 || verifier === undefined) return next;
+      const original = s.tasks[e.taskId]?.proposers.find((p) => p !== verifier);
+      const sources = e.independentSources === 2 ? "两个独立来源" : `${e.independentSources} 个独立来源`;
+      return story(
+        next,
+        e.at,
+        "ok",
+        `${name}：${verifier} 独立重做，和 ${original ? `${original} ` : "原来"}的答案一致 → ${sources}，收下`,
+        { taskId: e.taskId, throttle: THROTTLE.review },
+      );
+    }
+    case "task.failed":
+      return story(settle(s, e.taskId), e.at, "warn", `${taskName(e.taskId)} 没能收下（多次复核都没过）`, {
+        taskId: e.taskId,
+        throttle: THROTTLE.failed,
+      });
+    case "judge.decision": {
+      const d = e.decision;
+      let next = s;
+      // While Jev is switched off every decision escalates without Jev being asked, so it does not count as a Jev call.
+      if (d.tier === "system1" || (d.escalated && !d.guarded && !s.faults.jev)) {
+        const t = s.tally;
+        next = withTally(
+          s,
+          d.tier === "system1"
+            ? {
+                jevCalls: t.jevCalls + 1,
+                jevCostUsd: t.jevCostUsd + d.usage.costUsd,
+                s1Latencies: capPush(t.s1Latencies, d.latencyMs, CAP.latencies),
+              }
+            : { jevCalls: t.jevCalls + 1 },
+        );
+      }
+      if (d.fallback) {
+        // During a known LLM outage every System-2 call falls back; the outage line already says so.
+        if (s.faults.llm) return next;
+        return story(next, e.at, "warn", "大模型也没给出结果 → 按保守规则处理：不收经验、必须复核", {
+          short: "大模型未响应 → 保守规则",
+        });
+      }
+      if (d.key !== "dispute" || d.tier !== "system2") return next;
+      const head = `${d.taskId ? `${taskName(d.taskId)} ` : ""}两个答案对不上`;
+      // Neither a guarded key nor a Jev outage involves Jev being unsure, so those lines do not say it was.
+      const text = d.guarded
+        ? `${head} → 这类判断已直接交给大模型`
+        : s.faults.jev
+          ? `${head} → 交给大模型裁决`
+          : `${head}，Jev 拿不准 → 交给大模型裁决`;
+      return story(next, e.at, "s2", text, {
+        ...(d.taskId ? { taskId: d.taskId } : {}),
+        throttle: THROTTLE.dispute,
+      });
+    }
+    case "link.formed":
+      return e.reason === "review" ? withTally(s, { reviews: s.tally.reviews + 1 }) : s;
+    case "gene.gossiped":
+      return withTally(s, { gossiped: s.tally.gossiped + 1 });
+    case "gene.adopted": {
+      const g = s.genes.find((x) => x.id === e.geneId);
+      if (!g) return s;
+      const what = `${g.cellId} 的${DOMAIN_ZH[g.domain]}经验`;
+      const text = g.adoptedBy.length <= 1 ? `${what}，被 ${e.cellId} 收下了` : `${what}，已被 ${g.adoptedBy.length} 个邻居收下`;
+      return story(s, e.at, "gene", text, { key: `gene:${g.id}`, throttle: THROTTLE.gene });
+    }
+    case "gene.rejected": {
+      const sender = s.genes.find((x) => x.id === e.geneId)?.cellId;
+      // "untrusted" only means the sender's trust is low; an honest unlucky cell must not be called a poisoner on stage.
+      const poison = (sender !== undefined && s.cells[sender]?.compromised === true) || e.reason === "sanitize";
+      if (!poison) return s;
+      const counted = withTally(s, { poisonBlocked: s.tally.poisonBlocked + 1 });
+      if (sender === undefined) return counted;
+      const [next, k] = count(counted, `poison:${sender}`);
+      const opts = { key: `poison:${sender}` };
+      return k === 1
+        ? story(next, e.at, "danger", `${e.cellId} 拒收了 ${sender} 发来的 Gene：${REJECT_ZH[e.reason] ?? "内容可疑"}`, {
+            ...opts,
+            short: `邻居开始拒收 ${sender} 的毒 Gene`,
+          })
+        : story(next, e.at, "danger", `${sender} 发的毒 Gene 已被邻居拒收 ${k} 次`, opts);
+    }
+    case "echo.detected": {
+      const name = taskName(e.taskId);
+      // Whoever verified before the alarm saw the echoed answer; only the next claimant counts as independent.
+      const pending = withPending(s, { echo: { ...s.pending.echo, [e.taskId]: e.at }, verifier: omit(s.pending.verifier, e.taskId) });
+      // Every further copy re-fires the alarm on the same task; one line updated in place keeps other faults in view.
+      const [next, k] = count(pending, `echo:${e.taskId}`);
+      return story(
+        next,
+        e.at,
+        "danger",
+        `回声警报：${name} 有 ${e.agreeing} 份一样的答案，但只有 ${e.independentSources} 个出处 → 虚假共识，退回黑板，只让没看过答案的 Agent 复核`,
+        { key: `echo:${e.taskId}`, taskId: e.taskId, ...(k === 1 ? { short: `${name} 回声警报：${e.agreeing} 份答案 ${e.independentSources} 个出处` } : {}) },
+      );
+    }
+    case "cell.compromised":
+      return story(s, e.at, "danger", `${e.cellId} 被入侵：开始交错答案、发毒 Gene。蜂群没被告知，只能靠复核发现`, {
+        short: `${e.cellId} 被入侵`,
+      });
+    case "cell.quarantined": {
+      const trust = e.trust.toFixed(2);
+      const below = s.config ? `（低于 ${s.config.quarantineTrust}）` : " ";
+      return story(s, e.at, "danger", `${e.cellId} 信誉降到 ${trust}${below}→ 已隔离，它手上的任务退回黑板`, {
+        short: `${e.cellId} 被隔离（信誉 ${trust}）`,
+      });
+    }
+    case "permission.denied": {
+      // A killed or lease-expired honest cell also gets denied; only the hacked cell's attempts are misbehaviour.
+      if (s.cells[e.cellId]?.compromised !== true) return s;
+      const [next, k] = count(s, `deny:${e.cellId}`);
+      const text = `${e.cellId} 想${DENY_ACTION_ZH[e.action] ?? "越权操作"}，被拦下：${denyReason(e.reason)}${k > 1 ? ` ×${k}` : ""}`;
+      return story(next, e.at, "danger", text, {
+        key: `deny:${e.cellId}`,
+        ...(k === 1 ? { short: `${e.cellId} 越权操作被拦下` } : {}),
+      });
+    }
+    case "provider.fault":
+      if (e.provider === "jev") {
+        return e.down
+          ? story(s, e.at, "warn", "Jev 断开 → 所有判断改由大模型来做：慢一点、贵一点，但不停", {
+              short: "Jev 断开 → 改由大模型判断，没有停机",
+            })
+          : story(s, e.at, "ok", "Jev 恢复，判断重新走快速通道", { short: "Jev 恢复" });
+      }
+      return e.down
+        ? story(s, e.at, "warn", "大模型断开 → 按保守规则处理：不收经验、必须复核、任务回黑板", {
+            short: "大模型断开 → 保守规则",
+          })
+        : story(s, e.at, "ok", "大模型恢复", { short: "大模型恢复" });
+    case "judge.guard": {
+      const what = JUDGE_KEY_ZH[e.key] ?? e.key;
+      return story(
+        s,
+        e.at,
+        "warn",
+        `Jev 在「${what}」上，最近 ${e.window} 次有 ${Math.round(e.disagreement * e.window)} 次和大模型不一致 → 这一类判断自动交还大模型`,
+        { short: `Jev 在「${what}」上不准 → 交还大模型` },
+      );
+    }
+    case "library.hit": {
+      const name = taskName(e.taskId);
+      const first = e.titles[0];
+      const title = first ? `《${truncate(first, 24)}》` : "";
+      return e.source === "evomap"
+        ? story(s, e.at, "gene", `${name} 卡住了 → ${e.cellId} 去 EvoMap 找到别人的经验${title}：先过滤，复核通过才算数`, {
+            short: `${name} 用上 EvoMap 的经验`,
+            taskId: e.taskId,
+          })
+        : story(s, e.at, "gene", `${name} 卡住了 → ${e.cellId} 在本地经验库找到${title || "经验"}`, { taskId: e.taskId });
+    }
+    case "library.loaded":
+      return story(s, e.at, "gene", `继承上一轮的经验：${e.genes} 条 Gene、${e.precedents} 条判例`);
+    case "library.published": {
+      // `genes` counts what went into the local library; EvoMap only received the assets it acknowledged.
+      const sent = e.evomap?.assetIds.length ?? 0;
+      if (sent === 0) return story(s, e.at, "ok", `验证有效的经验存进本地经验库：${e.genes} 条`);
+      const passed = e.gate.filter((g) => g.passed).length;
+      return story(s, e.at, "ok", `验证有效的经验已发回 EvoMap：${sent} 条（新题 A/B 过门 ${passed}/${e.gate.length}）`, {
+        short: `经验发回 EvoMap ${sent} 条`,
+      });
+    }
+    case "research.report":
+      return story(
+        s,
+        e.at,
+        "ok",
+        `点子验证完成：结论${REC_ZH[e.report.recommendation]} · 金丝雀 ${e.report.canaryPassed}/${e.report.canaryTotal} 判对`,
+      );
+    default:
+      return s;
+  }
 }
 
 function body<T extends SwarmEvent>(e: T): Omit<T, "type" | "runId"> {
