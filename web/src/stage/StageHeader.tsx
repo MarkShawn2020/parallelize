@@ -47,8 +47,8 @@ export function StageHeader({ view, page, offline, onPage, onEngineering, onHome
     <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border border-grid bg-panel/90 px-4 py-2">
       <h1 className="shrink-0 font-display text-2xl font-semibold tracking-[0.18em]">
         <button type="button" onClick={onStandby} title="回到待命（按 0）" className="flex items-center gap-3">
-          <span className="text-accent">並列化</span>
-          <span className="text-fg">PARALLELIZE</span>
+          <span className="text-accent">JIS</span>
+          <span className="text-fg">JEV IN THE SHELL</span>
           {offline && <span title="服务器连接中断，正在重连" className="size-3 rounded-full bg-danger" />}
         </button>
       </h1>

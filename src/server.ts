@@ -377,7 +377,7 @@ function main(): void {
   const production = process.env.NODE_ENV === "production";
   const app = createAppServer({ runsDir: RUNS_DIR, staticDir: production ? join(PROJECT_ROOT, "web", "dist") : undefined });
   app.server.listen(port, host, () => {
-    console.log(`parallelize server listening on http://${host}:${port}${production ? "" : " (API only; dashboard via pnpm dev at :5173)"}`);
+    console.log(`jis server listening on http://${host}:${port}${production ? "" : " (API only; dashboard via pnpm dev at :5173)"}`);
   });
   const shutdown = () => {
     app.activeRun()?.stop();

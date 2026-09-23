@@ -1,5 +1,5 @@
 {
-  "name": "parallelize",
+  "name": "jis",
   "version": "0.1.0",
   "private": true,
   "description": "System-1 swarm: Jev handles coordination reflexes, LLM handles hard thinking. EvoTavern 4th SECTION 9.",
@@ -12,10 +12,15 @@
     "dev": "pnpm run --parallel \"/^dev:/\"",
     "dev:server": "tsx watch --env-file-if-exists=.env src/server.ts",
     "dev:web": "vite",
+    "watch:inspect": "LOVINSP=1 vite build --watch",
+    "exam:build": "tsx scripts/build-exam.ts",
+    "race:build": "tsx scripts/build-race.ts",
+    "report:build": "tsx scripts/build-report.ts",
     "start": "NODE_ENV=production tsx --env-file-if-exists=.env src/server.ts",
     "bench": "tsx --env-file-if-exists=.env src/cli/bench.ts",
     "smoke:live": "tsx --env-file-if-exists=.env src/cli/smoke.ts",
     "build": "vite build",
+    "build:site": "VITE_STATIC_SITE=1 vite build --outDir dist-site --emptyOutDir",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "evomap": "tsx --env-file-if-exists=.env src/cli/evomap.ts"
@@ -24,6 +29,8 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-force-graph-2d": "^1.29.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "undici": "^8.11.0",
     "ws": "^8.21.3"
   },
@@ -34,6 +41,7 @@
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.1.1",
+    "lovinsp": "^1.8.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
@@ -44,5 +52,9 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lovstudio/jis.git"
   }
 }

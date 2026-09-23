@@ -81,7 +81,7 @@ describe("JevJudge", () => {
     const sent = s.requests[0];
     expect(sent?.url).toBe("/api/v1/systemone");
     expect(sent?.headers.authorization).toBe(`Bearer ${KEY}`);
-    expect(sent?.headers["x-title"]).toBe("parallelize");
+    expect(sent?.headers["x-title"]).toBe("jis");
     expect(sent?.headers["content-type"]).toBe("application/json");
     expect(JSON.parse(sent?.body ?? "")).toEqual({ model: "typesafe/jev", state: "state text", questions: QUESTIONS });
   });

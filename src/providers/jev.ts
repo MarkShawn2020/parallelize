@@ -45,7 +45,7 @@ export class JevJudge implements Judge {
         headers: {
           Authorization: `Bearer ${this.#opts.apiKey}`,
           "Content-Type": "application/json",
-          "X-Title": "parallelize",
+          "X-Title": "jis",
         },
         timeoutMs: this.#opts.timeoutMs ?? 30_000,
         retries: this.#opts.retries ?? 2,

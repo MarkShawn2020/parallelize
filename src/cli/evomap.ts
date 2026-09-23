@@ -19,7 +19,7 @@ export function sampleBundleInput(now: number): EvoMapBundleInput {
       kind: "solve",
       domain: "arithmetic",
       text: "For multi-step arithmetic, write every intermediate result on its own line, then confirm the final answer by inverting the last operation before answering.",
-      origin: "parallelize-sample",
+      origin: "jis-sample",
       lineageId: id,
       wins: 7,
       trials: 8,

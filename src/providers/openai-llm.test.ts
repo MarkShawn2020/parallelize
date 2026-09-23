@@ -65,7 +65,7 @@ describe("OpenAICompatLLM", () => {
     const sent = s.requests[0];
     expect(sent?.url).toBe("/api/v1/chat/completions");
     expect(sent?.headers.authorization).toBe(`Bearer ${KEY}`);
-    expect(sent?.headers["x-title"]).toBe("parallelize");
+    expect(sent?.headers["x-title"]).toBe("jis");
     expect(JSON.parse(sent?.body ?? "")).toEqual({
       model: "anthropic/claude-haiku-4.5",
       messages: req().messages,

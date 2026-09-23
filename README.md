@@ -1,4 +1,4 @@
-# Parallelize 並列化
+# JIS · Jev in the Shell
 
 EvoTavern 第四届黑客松 SECTION 9（多 Agent 蜂群协作）参赛作品。
 
@@ -75,6 +75,9 @@ Coordination that can be written as a rule costs zero tokens. The fast typed jud
 pnpm install
 cp .env.example .env          # 填 OPENROUTER_API_KEY（Jev 与 LLM 共用）
 pnpm dev                      # 服务端 :8787 + 看板 http://localhost:5173
+                              # 开发时点页面元素定位源码（lovinsp）：Option+Shift+点击复制路径，
+                              # Option+Shift+Command+点击在 IDE 打开（Windows / Linux 用 Alt+Shift，Alt+Shift+Ctrl）
+pnpm watch:inspect            # 让 :8787 发的打包版也带 lovinsp（常驻；上台前停掉它再 pnpm build 出干净包）
 
 # 离线模拟，不调用任何 API：七种模式同设置对比
 pnpm bench --llm mock --judge mock --n 48 --cells 6
@@ -102,7 +105,7 @@ pnpm evomap validate-sample   # 用示例 bundle 试发，确认 hub 接受格�
 
 `pnpm bench` 参数：`--mode <mode[,mode...]|all> --n --cells --seed --judge jev|mock --llm openrouter|mock --sim-pace 1-40 --source synthetic|gsm8k --difficulty normal|hard --path --max-cost --vote-budget --inherit --library-dir --evomap-lookup --cell-models a,b --research "<idea>" --claims --canaries`。`--sim-pace N` 把模拟 provider 的延迟乘以 N（默认 1；10 约等于真实运行节奏，断网兜底演示用）。`all` 的顺序是 swarm-jev 先跑，它的总 token 作为 single-vote 的预算（除非给了 `--vote-budget`）。对比表增加 `coord_share`、`pass_err`、`false_acc_verified`、`esc_rate` 列；完整结果写入 `runs/compare-<时间戳>.json`。每次运行写入 `runs/<runId>/`（`events.jsonl`、`ledger.jsonl`、`summary.json`，研究场景另有 `report.md`）。服务端只接受 `data/` 目录内的 gsm8k 文件。
 
-EvoMap 节点文件默认在 `~/.config/parallelize/evomap-node.json`（`EVOMAP_NODE_FILE` 可覆盖），不会写进仓库或云同步目录。
+EvoMap 节点文件默认在 `~/.config/jis/evomap-node.json`（`EVOMAP_NODE_FILE` 可覆盖），不会写进仓库或云同步目录。
 
 ## 指标 / Metrics
 

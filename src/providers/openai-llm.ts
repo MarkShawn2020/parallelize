@@ -47,7 +47,7 @@ export class OpenAICompatLLM implements LLM {
         headers: {
           Authorization: `Bearer ${this.#opts.apiKey}`,
           "Content-Type": "application/json",
-          "X-Title": "parallelize",
+          "X-Title": "jis",
         },
         timeoutMs: this.#opts.timeoutMs ?? 180_000,
         retries: this.#opts.retries ?? 2,

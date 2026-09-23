@@ -19,6 +19,19 @@ const ASSET_ID_RE = /^sha256:[0-9a-f]{64}$/i;
 const NODE_ID_RE = /^node_[A-Za-z0-9_-]{4,64}$/;
 const REFUSED_STATUSES = new Set(["rejected", "error", "failed", "invalid"]);
 
+/**
+ * Node credential lives under ~/.config/jis/. The project was called "parallelize" until
+ * 2026-09-23, so an existing credential at the old path is still honoured rather than
+ * silently re-registering a new node.
+ */
+export function defaultNodeFile(): string {
+  const current = join(homedir(), ".config", "jis", "evomap-node.json");
+  if (existsSync(current)) return current;
+  const legacy = join(homedir(), ".config", "parallelize", "evomap-node.json");
+  if (existsSync(legacy)) return legacy;
+  return current;
+}
+
 export type EvoMapGeneHit = {
   assetId: string;
   title: string;
@@ -158,7 +171,7 @@ export function buildBundle(g: EvoMapBundleInput): EvoMapBundle {
       `Scope: 1 file(s), ${fileLines} line(s): the strategy is applied by adding one strategy file to the agent's prompt strategy library; no code changes.`,
       "Changed files:",
       file,
-      "Validation: the node command re-checks the recorded holdout numbers against the publish thresholds; the holdout run itself happened in Parallelize before publishing.",
+      "Validation: the node command re-checks the recorded holdout numbers against the publish thresholds; the holdout run itself happened in JIS before publishing.",
     ]
       .join("\n")
       .slice(0, 8000),
@@ -276,7 +289,7 @@ export class EvoMapClient {
 
   constructor(opts: EvoMapClientOptions = {}) {
     this.baseUrl = (opts.baseUrl ?? process.env.EVOMAP_BASE_URL ?? EVOMAP_DEFAULT_BASE_URL).replace(/\/+$/, "");
-    this.nodeFile = resolve(opts.nodeFile ?? process.env.EVOMAP_NODE_FILE ?? join(homedir(), ".config", "parallelize", "evomap-node.json"));
+    this.nodeFile = resolve(opts.nodeFile ?? process.env.EVOMAP_NODE_FILE ?? defaultNodeFile());
     this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     // undici's own fetch pairs with the pooled dispatcher configureNetwork() installs; Node's built-in fetch may
     // bundle a different undici major and cannot read bodies from a newer dispatcher.
