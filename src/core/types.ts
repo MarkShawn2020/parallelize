@@ -504,7 +504,13 @@ export type SwarmEvent =
   | (Base & { type: "gene.created"; geneId: string; cellId: string; domain: Domain; text: string })
   | (Base & { type: "gene.gossiped"; geneId: string; fromCell: string; toCell: string })
   | (Base & { type: "gene.adopted"; geneId: string; cellId: string })
-  | (Base & { type: "gene.rejected"; geneId: string; cellId: string; reason: "judge" | "recollision" })
+  | (Base & {
+      type: "gene.rejected";
+      geneId: string;
+      cellId: string;
+      /** rule: the receiver already holds a proven gene for the domain, so no judgment was spent. */
+      reason: "judge" | "recollision" | "sanitize" | "untrusted" | "rule";
+    })
   | (Base & { type: "gene.forgotten"; geneId: string; cellId: string })
   | (Base & { type: "echo.detected"; taskId: string; proposalIds: string[]; agreeing: number; independentSources: number })
   | (Base & { type: "metrics"; metrics: LiveMetrics })

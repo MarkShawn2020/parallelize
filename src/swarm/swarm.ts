@@ -48,7 +48,7 @@ import {
   SOLVE_SYSTEM,
   VERIFY_QUESTION,
 } from "./cell";
-import { adoptCopy, createGene } from "./genes";
+import { adoptCopy, createGene, geneFitness } from "./genes";
 import { disputeVerdictConfirmed, isDisagreement, resolveAfterProposal, scoreGroups, verifyVerdictConfirmed } from "./resolve";
 import type { Resolution, ScoredGroup } from "./resolve";
 import { sanitizeGeneText } from "./sanitize";
@@ -139,6 +139,9 @@ const ECHO_SOLVES = 2;
 const ECHO_RESERVE_MS = 5000;
 const DECLINES_BEFORE_FORCE = 3;
 const ADOPT_THRESHOLD = 0.5;
+/** A held gene this proven makes a peer's equal-or-weaker gene not worth a judgment (zero-token rule). */
+const PROVEN_TRIALS = 2;
+const PROVEN_FITNESS = 0.6;
 const DISPUTE_MIN_CONFIDENCE = 0.6;
 const HEARTBEAT_MS = 5000;
 const LIBRARY_K = 3;
@@ -1164,7 +1167,7 @@ export class Swarm {
     from: { sender?: Cell; offerId?: string; fitness: number },
   ): Promise<Gene | undefined> {
     const to = from.sender?.id ?? SERVICE.library;
-    const reject = (reason: "judge" | "recollision", extra: Record<string, unknown> = {}): undefined => {
+    const reject = (reason: "judge" | "recollision" | "sanitize" | "untrusted" | "rule", extra: Record<string, unknown> = {}): undefined => {
       this.emit({ type: "gene.rejected", geneId: gene.id, cellId: receiver.id, reason });
       this.message({ type: "GENE_REJECT", from: receiver.id, to, body: { geneId: gene.id, reason, ...extra } });
       return undefined;
@@ -1179,9 +1182,16 @@ export class Swarm {
         this.penalizedGenes.add(gene.id);
         this.recordTrust(sender, false, `injection-shaped gene ${gene.id}`);
       }
-      return reject("judge", { sanitize: clean.reasons });
+      return reject("sanitize", { sanitize: clean.reasons });
     }
-    if (from.sender && this.trust.get(from.sender.id) < this.config.reviewTrust) return reject("judge", { untrusted: true });
+    if (from.sender && this.trust.get(from.sender.id) < this.config.reviewTrust) return reject("untrusted");
+    if (from.sender) {
+      // Stuck-task lookups skip this rule on purpose: a stuck solver wants a different strategy.
+      const held = receiver.pool.best(gene.domain);
+      if (held && held.trials >= PROVEN_TRIALS && geneFitness(held) >= PROVEN_FITNESS && from.fitness <= geneFitness(held)) {
+        return reject("rule", { held: held.id });
+      }
+    }
 
     const offered: Gene = { ...gene, text: clean.text };
     let adopt = true;

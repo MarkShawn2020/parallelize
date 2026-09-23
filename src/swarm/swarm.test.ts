@@ -66,6 +66,7 @@ interface Setup {
   gossipEvery?: number;
   solveDelayMs?: number;
   llm?: (truth: Map<string, string>) => LLM;
+  judge?: Judge;
 }
 
 function makeSwarm(s: Setup) {
@@ -95,7 +96,7 @@ function makeSwarm(s: Setup) {
     config,
     tasks,
     llm,
-    judge: fakeJudge(s.verifyNoul ?? 0.1),
+    judge: s.judge ?? fakeJudge(s.verifyNoul ?? 0.1),
     bus,
     lineage: new LineageGraph(),
     board,
@@ -198,6 +199,24 @@ describe("Swarm", () => {
     expect(new Set(offers).size).toBe(offers.length);
     expect(ofType("gene.adopted").length).toBe(swarm.stats().genesAdopted);
     expect(swarm.stats().genesAdopted).toBeGreaterThan(0);
+  });
+
+  it("rejects a peer's gene by rule, without a judgment, once the receiver holds a proven gene", async () => {
+    const tasks = 60;
+    let adoptAsks = 0;
+    const judge = fakeJudge(0.1);
+    const counting: Judge = {
+      ...judge,
+      async ask(req) {
+        if (QK.adopt in req.questions) adoptAsks++;
+        return judge.ask(req);
+      },
+    };
+    const { swarm, ofType } = makeSwarm({ n: tasks, cells: 3, gossipEvery: 1, solveDelayMs: 1, judge: counting });
+    await swarm.start();
+    const byRule = ofType("gene.rejected").filter((e) => e.reason === "rule");
+    expect(byRule.length).toBeGreaterThan(0);
+    expect(adoptAsks).toBeLessThan(ofType("gene.gossiped").length);
   });
 
   it("validates kill targets and aborts once every cell is dead", async () => {

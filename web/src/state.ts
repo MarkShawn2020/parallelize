@@ -14,6 +14,14 @@ import type {
   TaskStatus,
 } from "../../src/core/types";
 
+const REJECT_REASON: Record<string, string> = {
+  judge: "判定 judge",
+  recollision: "回流 recollision",
+  sanitize: "注入过滤 sanitize",
+  untrusted: "发送方不可信 untrusted",
+  rule: "已有验证过的同类 Gene rule",
+};
+
 export const CAP = {
   history: 600,
   decisions: 200,
@@ -318,7 +326,7 @@ export function reduce(s: RunView, e: SwarmEvent): RunView {
         ),
         e.at,
         "info",
-        `基因拒收 Rejected ${e.geneId} @ ${e.cellId} · ${e.reason === "recollision" ? "回流 recollision" : "判定 judge"}`,
+        `基因拒收 Rejected ${e.geneId} @ ${e.cellId} · ${REJECT_REASON[e.reason]}`,
       );
     case "gene.forgotten":
       return patchCell(s, e.cellId, (c) => ({ ...c, genes: Math.max(0, c.genes - 1) }));
