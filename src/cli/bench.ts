@@ -14,7 +14,7 @@ export const BENCH_ORDER: readonly Mode[] = ["swarm-jev", "single", "single-vote
 
 const USAGE = `usage: pnpm bench [--mode <mode[,mode...]|all>] [--n 64] [--cells 8] [--seed 7] [--judge jev|mock] [--llm openrouter|mock] [--sim-pace 1]
                   [--source synthetic|gsm8k] [--difficulty normal|hard] [--path file.jsonl] [--max-cost 2] [--vote-budget <tokens>]
-                  [--inherit] [--library-dir <dir>] [--evomap-lookup] [--evomap-publish] [--cell-models a,b] [--judge-model vendor/model]
+                  [--inherit] [--library-dir <dir>] [--evomap-lookup] [--evomap-publish] [--cell-models a,b] [--judge-model vendor/model] [--escalation 0-1]
                   [--research "<idea>" [--claims 6] [--canaries 2]]
 modes: ${MODES.join(", ")}
 --inherit runs one swarm mode (default swarm-jev) twice: cold on --seed with an empty library, warm on --seed+1 inheriting it.
@@ -22,7 +22,8 @@ modes: ${MODES.join(", ")}
 --sim-pace N (1-40) multiplies simulated provider latency; 10 paces a mock run like a real one.
 --reasoning off|low|default sets the real LLM reasoning pass (default off).
 --evomap-publish publishes genes that pass the holdout gate to EvoMap (real providers and a registered node only).
---judge-model sets the System-2 model for judgments (review, adoption, disputes); solving keeps the default model.`;
+--judge-model sets the System-2 model for judgments (review, adoption, disputes); solving keeps the default model.
+--escalation sets swarm-jev's escalation threshold: 0 keeps every judgment with Jev, 1 sends every one to System 2.`;
 
 const COLUMNS: Array<[string, number]> = [
   ["run", 20],
@@ -121,6 +122,7 @@ export function buildPlan(values: BenchArgs): BenchRun[] {
       evomapPublish: values["evomap-publish"] === true,
       cellModels: models === undefined ? undefined : models.split(",").map((m) => m.trim()).filter(Boolean),
       judgeModel,
+      escalationThreshold: num(values, "escalation"),
       taskSource:
         idea !== undefined
           ? { kind: "research", idea, claims: num(values, "claims"), canaries: num(values, "canaries") }
@@ -214,6 +216,7 @@ async function main(): Promise<number> {
       canaries: { type: "string" },
       "cell-models": { type: "string" },
       "judge-model": { type: "string" },
+      escalation: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });
