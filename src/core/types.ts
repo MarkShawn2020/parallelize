@@ -249,17 +249,27 @@ export interface Blackboard {
   claimable(now: number): TaskEntry[];
   get(taskId: string): TaskEntry | undefined;
   all(): TaskEntry[];
-  /** Atomic: false if another live lease holds it, or the cell already proposed on a verifying task. */
+  /**
+   * Atomic. Succeeds on an open task, on a verifying task with no live lease whose proposers
+   * exclude this cell, or on a task whose lease has expired. Increments attempts on success.
+   */
   claim(taskId: string, cellId: string, now: number): boolean;
   renew(taskId: string, cellId: string, now: number): boolean;
+  /** Drops the cell's claim: claimed -> open (or verifying if proposals exist); verifying stays verifying. */
   release(taskId: string, cellId: string): void;
-  /** Records a proposal and releases the claim. Status is unchanged. */
+  /**
+   * Records a proposal and adds the cell to proposers. The proposer KEEPS its lease until it calls
+   * accept, requestVerification or release, so a cell dying mid-decision still lets sweep() recover the task.
+   */
   propose(p: Proposal): void;
-  /** Moves the task to verifying so a different cell re-solves it. */
+  /** Moves the task to verifying and clears the claim so a different cell re-solves it. */
   requestVerification(taskId: string): void;
   accept(taskId: string, answer: string, proposalIds: string[], independentSources: number): void;
   fail(taskId: string): void;
-  /** Reopens tasks whose lease expired (dead or stalled cells). Returns reopened task ids. */
+  /**
+   * Clears expired leases: claimed -> open (or verifying if proposals exist); verifying stays verifying.
+   * Returns the affected task ids.
+   */
   sweep(now: number): string[];
   done(): boolean;
   /** Deterministic merge keyed by task id; no LLM rewrites answers. */
