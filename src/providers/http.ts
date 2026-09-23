@@ -1,3 +1,4 @@
+import { fetch } from "undici";
 import { sleep } from "../core/rng";
 
 const SNIPPET_CHARS = 300;

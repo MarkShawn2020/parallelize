@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Domain, LibraryGene } from "../core/types";
+import { fetch as undiciFetch } from "undici";
 
 export const EVOMAP_DEFAULT_BASE_URL = "https://evomap.ai";
 const SCHEMA_VERSION = "1.14.0";
@@ -277,7 +278,9 @@ export class EvoMapClient {
     this.baseUrl = (opts.baseUrl ?? process.env.EVOMAP_BASE_URL ?? EVOMAP_DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.nodeFile = resolve(opts.nodeFile ?? process.env.EVOMAP_NODE_FILE ?? join(homedir(), ".config", "parallelize", "evomap-node.json"));
     this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.fetchImpl = opts.fetchImpl ?? fetch;
+    // undici's own fetch pairs with the pooled dispatcher configureNetwork() installs; Node's built-in fetch may
+    // bundle a different undici major and cannot read bodies from a newer dispatcher.
+    this.fetchImpl = opts.fetchImpl ?? (undiciFetch as unknown as typeof fetch);
   }
 
   async search(query: string, opts: { limit?: number; minGdi?: number } = {}): Promise<EvoMapGeneHit[]> {
