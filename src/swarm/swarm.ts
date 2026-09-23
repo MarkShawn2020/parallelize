@@ -631,11 +631,20 @@ export class Swarm {
     void p.finally(() => this.background.delete(p));
   }
 
-  /** false = the swarm must stop. */
+  /** false = this cell's loop must end. */
   private handleError(cell: Cell, err: unknown): boolean {
     if (err instanceof BudgetExceededError) {
       this.log("warn", `budget reached: ${err.message}`);
       this.stop("budget");
+      return false;
+    }
+    const status = refusalStatus(err);
+    if (status !== undefined) {
+      // A refused key or model never recovers by retrying: retire the cell (a spawned cell on a refused model
+      // leaves the rest running) and end the run once nobody can work.
+      this.log("error", `${cell.id}: provider refused (HTTP ${status}); cell retired`);
+      if (cell.alive) this.kill(cell.id);
+      if (this.aliveCount() === 0) this.stop(`provider refused (HTTP ${status})`);
       return false;
     }
     if (!this.stopped) this.log("warn", `${cell.id}: ${errorMessage(err)}`);
@@ -1325,4 +1334,10 @@ async function settleWithin(promises: Promise<unknown>[], ms: number): Promise<v
   });
   await Promise.race([Promise.allSettled(promises), timeout]);
   clearTimeout(timer);
+}
+
+/** HTTP statuses that mean "this key or model is not allowed", as opposed to transient failures. */
+function refusalStatus(err: unknown): number | undefined {
+  const status = typeof err === "object" && err !== null ? (err as { status?: unknown }).status : undefined;
+  return status === 401 || status === 402 || status === 403 ? status : undefined;
 }

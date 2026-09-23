@@ -201,6 +201,29 @@ describe("Swarm", () => {
     expect(swarm.stats().genesAdopted).toBeGreaterThan(0);
   });
 
+  it("retires a cell whose provider refuses it and ends the run once every cell is refused", async () => {
+    const refusing = (onlyCell?: string) => (truth: Map<string, string>): LLM => {
+      const ok = fakeLLM(truth);
+      return {
+        ...ok,
+        async complete(req) {
+          if (onlyCell === undefined || req.meta.cellId === onlyCell) throw Object.assign(new Error("HTTP 403"), { status: 403 });
+          return ok.complete(req);
+        },
+      };
+    };
+    const all = makeSwarm({ n: 4, cells: 2, llm: refusing() });
+    await all.swarm.start();
+    expect(all.swarm.abortReason()).toBe("provider refused (HTTP 403)");
+    expect(all.swarm.aliveCount()).toBe(0);
+
+    const one = makeSwarm({ n: 6, cells: 3, llm: refusing("c01") });
+    await one.swarm.start();
+    expect(one.swarm.abortReason()).toBeUndefined();
+    expect(one.ofType("cell.killed").map((e) => e.cellId)).toEqual(["c01"]);
+    expect(one.ofType("task.accepted")).toHaveLength(6);
+  });
+
   it("validates kill targets and aborts once every cell is dead", async () => {
     const { swarm } = makeSwarm({ n: 4, cells: 2, solveDelayMs: 50 });
     expect(() => swarm.kill("c99")).toThrow(/unknown cell/);
