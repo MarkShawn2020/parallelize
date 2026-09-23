@@ -19,7 +19,7 @@ const COLUMNS = [
   ["协调 Token", "Coord"],
   ["协调占比", "Share"],
   ["成本", "Cost"],
-  ["AIR", "正确/千Token"],
+  ["正确/千Token", "Correct/1k"],
   ["升级率", "Escalation"],
   ["放行错误率", "Pass-through"],
   ["错放率(≥2源)", "False accept"],

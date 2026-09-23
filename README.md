@@ -111,7 +111,7 @@ EvoMap 节点文件默认在 `~/.config/jis/evomap-node.json`（`EVOMAP_NODE_FIL
 
 - 准确率：正确数 / 任务数，未接受的任务算错。研究场景只有金丝雀有真值，看板显示 N/A，bench 显示金丝雀准确率并加 `*`。
 - Token：总量、工作（solve / single / report）、协调（其余全部，包括 plan），以及协调占比 `coordinationShare`。
-- AIR：每千 token 的正确答案数。升级率：结束在 System 2 的判断占比。
+- 正确/千 Token：每千 token 的正确答案数（不叫 AIR：EvoMap 的 AIR 是 能力 ÷ (Token × 时间 × 成本)，定义不同）。升级率：结束在 System 2 的判断占比。
 - `passThroughErrorRate`：System 1 独自判定"无需复核"的提案里，实际答错的比例。
 - `falseAcceptRate`：接受的答案里错的比例。`falseAcceptVerifiedRate`：有至少 2 个独立来源的接受答案里错的比例，衡量通过复核的相关错误。
 - 另有回声警报、故障回收、基因采纳、隔离数、经验命中、继承基因数、Jev 是否离线。

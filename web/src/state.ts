@@ -257,7 +257,7 @@ function apply(s: RunView, e: SwarmEvent): RunView {
       const accuracy = m.accuracyApplicable === false ? "准确率 N/A" : `准确率 ${(m.accuracy * 100).toFixed(1)}%`;
       const text = e.summary.aborted
         ? `中止 Aborted · ${e.summary.aborted}`
-        : `完成 Finished · ${accuracy} · AIR ${m.air.toFixed(2)}`;
+        : `完成 Finished · ${accuracy}`;
       return log({ ...s, summary: e.summary, metrics: m }, e.at, e.summary.aborted ? "warn" : "ok", text);
     }
     case "cell.spawned": {

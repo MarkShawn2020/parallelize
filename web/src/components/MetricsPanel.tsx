@@ -42,7 +42,7 @@ export function MetricsPanel({ metrics: m, cellsTotal }: Props) {
           tone={applicable ? "accent" : "muted"}
           size="xl"
         />
-        <Stat label="AIR" en="每千 Token 正确数" value={v((x) => x.air, fmtAir)} sub="correct / 1k tokens" size="xl" />
+        <Stat label="正确/千 Token" en="Correct / 1k tok" value={v((x) => x.air, fmtAir)} size="xl" />
       </div>
       <div className="grid grid-cols-3 gap-px">
         <Stat label="总 Token" en="Total" value={v((x) => x.totalTokens, fmtTokens)} sub={m ? `工作 work ${fmtTokens(m.workTokens)}` : undefined} />
