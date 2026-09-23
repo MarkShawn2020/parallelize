@@ -52,6 +52,7 @@ export const DEFAULT_CONFIG: RunConfig = {
   publishGateTasks: 8,
   publishGateMinDelta: 1,
   cellModels: [],
+  judgeModel: "",
   voteBudgetTokens: 0,
 };
 
@@ -159,6 +160,13 @@ function taskSource(raw: unknown): TaskSourceConfig {
   return researchSource(raw);
 }
 
+function modelId(name: string, raw: unknown): string {
+  if (typeof raw !== "string" || raw.length === 0 || raw.length > MAX_MODEL_CHARS || !MODEL_ID.test(raw)) {
+    throw new Error(`${name} must be a model id like "vendor/model" (at most ${MAX_MODEL_CHARS} chars)`);
+  }
+  return raw;
+}
+
 function cellModels(raw: unknown): string[] {
   if (!Array.isArray(raw)) throw new Error("cellModels must be an array of model ids");
   if (raw.length > MAX_CELL_MODELS) throw new Error(`cellModels allows at most ${MAX_CELL_MODELS} models`);
@@ -196,6 +204,7 @@ export function parseRunConfig(body: unknown): RunConfig {
   if (body.claimPolicy !== undefined) cfg.claimPolicy = oneOf("claimPolicy", body.claimPolicy, ["rule", "judge"] as const);
   if (body.llmReasoning !== undefined) cfg.llmReasoning = oneOf("llmReasoning", body.llmReasoning, ["default", "off", "low"] as const);
   if (body.cellModels !== undefined) cfg.cellModels = cellModels(body.cellModels);
+  if (body.judgeModel !== undefined) cfg.judgeModel = modelId("judgeModel", body.judgeModel);
   if (body.taskSource !== undefined) cfg.taskSource = taskSource(body.taskSource);
   // The planner sets a research run's size, so n mirrors it for every display that reads config.n.
   if (cfg.taskSource.kind === "research") cfg.n = cfg.taskSource.claims + cfg.taskSource.canaries;

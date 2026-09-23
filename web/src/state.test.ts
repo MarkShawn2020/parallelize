@@ -37,6 +37,7 @@ const config: RunConfig = {
   publishGateTasks: 6,
   publishGateMinDelta: 1,
   cellModels: [],
+  judgeModel: "",
   voteBudgetTokens: 0,
 };
 

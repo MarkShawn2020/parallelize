@@ -227,3 +227,14 @@ describe("providerEnv", () => {
     expect(env.jev.apiKey).toBeUndefined();
   });
 });
+
+describe("judgeModel", () => {
+  it("defaults to the solving model and accepts a model id", () => {
+    expect(parseRunConfig({ mode: "swarm-llm" }).judgeModel).toBe("");
+    expect(parseRunConfig({ mode: "swarm-llm", judgeModel: "anthropic/claude-sonnet-5" }).judgeModel).toBe("anthropic/claude-sonnet-5");
+  });
+  it("rejects anything that is not a model id", () => {
+    expect(() => parseRunConfig({ mode: "swarm-llm", judgeModel: "rm -rf /" })).toThrow(/judgeModel/);
+    expect(() => parseRunConfig({ mode: "swarm-llm", judgeModel: 42 })).toThrow(/judgeModel/);
+  });
+});

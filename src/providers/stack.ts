@@ -137,7 +137,7 @@ export class ProviderStack {
   }
 
   private system2(): Judge {
-    if (!this.mockLLM) return new LLMJudge({ llm: this.llm() });
+    if (!this.mockLLM) return new LLMJudge({ llm: this.llm(this.config.judgeModel || this.defaultModel) });
     // LLMJudge calls go through the metered LLM; only the simulated System 2 needs its own meter and fault switch.
     // A real LLM judgment takes ~1.5-3 s, so the simulated System 2 stretches at most 2x or a paced demo crawls.
     const s2 = new MockJudge({ tier: "system2", seed: this.config.seed, oracle: this.oracle, ...this.latency(mockJudgeLatencyMs("system2"), 2) });

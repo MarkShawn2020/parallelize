@@ -31,6 +31,8 @@ export interface RunConfig {
   judge: "jev" | "mock";
   /** System-2 provider for every mode. */
   llm: "openrouter" | "mock";
+  /** Model for System-2 judgments (review, adoption, disputes); empty: the solving model. Solving is unchanged. */
+  judgeModel: string;
   /**
    * Multiplier applied to simulated provider latency (1 = default fast simulation; e.g. 10 makes mock LLM
    * solves ~0.6-1.8 s). Real providers ignore it.
