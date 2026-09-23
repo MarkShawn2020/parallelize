@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import type { TaskStatus } from "../../../src/core/types";
-import { truncate } from "../format";
 import { DOMAIN_LABEL, SOURCE_LABEL, TASK_STATUS_BG, TASK_STATUS_LABEL } from "../labels";
 import type { LibrarySource, TaskView } from "../state";
 import { Panel } from "./Panel";
@@ -108,7 +107,7 @@ export function TaskGrid({ tasks, focusTask, onFocusTask }: Props) {
                 {SOURCE_LABEL[focused.hit]} 命中 · {focused.hitTitles?.join(" / ")}
               </div>
             )}
-            <div className="text-fg/75">{truncate(focused.prompt, 220)}</div>
+            <div className="max-h-40 overflow-y-auto text-fg/75">{focused.prompt}</div>
           </div>
         ) : (
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted tabular-nums">

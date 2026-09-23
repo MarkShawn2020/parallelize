@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { truncate } from "../format";
 import type { GeneCardData } from "../components/GeneCard";
 import { GeneChips } from "../components/GeneChips";
 import { SwarmGraph } from "../components/SwarmGraph";
@@ -169,7 +168,8 @@ export function StageLive({ view, running, selected, onToggle, onKill, onOpenGen
               </p>
             )}
             {(task.independentSources ?? 0) >= 2 && <p className="mt-3 text-ok">{task.independentSources} 个独立来源一致</p>}
-            <p className="mt-4 text-base text-fg/75">{truncate(task.prompt, 120)}</p>
+            {/* Hard problems run 260-790 characters; a clipped one hides the very facts the answer depends on. */}
+            <p className="mt-4 max-h-[40vh] overflow-y-auto font-mono text-base leading-relaxed text-fg/85">{task.prompt}</p>
           </div>
         </div>
       )}
