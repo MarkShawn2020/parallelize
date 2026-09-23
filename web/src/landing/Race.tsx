@@ -32,8 +32,8 @@ const LANES: Record<LaneId, LaneMeta> = {
     bar: "bg-muted",
   },
   "swarm-rules": {
-    name: "EvoMap 蜂群",
-    how: "8 个 Agent 在黑板上领题、互相复核、在邻居间传经验（EvoMap 的 gossip / adopt / forget）。",
+    name: "规则蜂群",
+    how: "8 个 Agent 在黑板上领题、互相复核、在邻居间传经验（按 EvoMap 公开的 gossip / adopt / forget 实现）。",
     judge: "判断用固定规则 · 0 token",
     judgeChip: "border-fg/40 text-fg/85",
     text: "text-fg",
@@ -43,8 +43,8 @@ const LANES: Record<LaneId, LaneMeta> = {
     bar: "bg-fg/70",
   },
   "swarm-llm": {
-    name: "EvoMap 蜂群",
-    how: "8 个 Agent 在黑板上领题、互相复核、在邻居间传经验（EvoMap 的 gossip / adopt / forget）。",
+    name: "LLM 蜂群",
+    how: "8 个 Agent 在黑板上领题、互相复核、在邻居间传经验（按 EvoMap 公开的 gossip / adopt / forget 实现）。",
     judge: "判断全交大模型",
     judgeChip: "border-s2/60 text-s2",
     text: "text-fg",
@@ -54,9 +54,9 @@ const LANES: Record<LaneId, LaneMeta> = {
     bar: "bg-s2",
   },
   "swarm-jev": {
-    name: "Jev 蜂群",
-    how: "同一个蜂群，只把判断换成 Jev：约半秒一次、几乎不花钱，拿不准才请大模型。",
-    judge: "Jev 先判断 → 拿不准交大模型",
+    name: "JIS 蜂群",
+    how: "同一个蜂群，只把判断换成 Jev：约半秒一次、几乎不花钱；这一轮里一部分判断交回大模型。",
+    judge: "Jev 先判断 → 部分交大模型",
     judgeChip: "border-s1/60 text-s1",
     text: "text-accent",
     border: "border-accent",
@@ -349,8 +349,8 @@ function JevMap({ middle, mid, jev, single }: { middle: Middle; mid: LaneState; 
         <div className="grid min-w-[720px] grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(0,1fr))] gap-2">
           <span />
           <span className="text-sm font-semibold text-fg/85">单 Agent</span>
-          <span className="text-sm font-semibold text-fg/85">EvoMap 蜂群 · {middle === "rules" ? "规则判断" : "大模型判断"}</span>
-          <span className="text-sm font-semibold text-accent">Jev 蜂群</span>
+          <span className="text-sm font-semibold text-fg/85">{middle === "rules" ? "规则蜂群" : "LLM 蜂群"}</span>
+          <span className="text-sm font-semibold text-accent">JIS 蜂群</span>
           {rows.map(([label, hint, cells]) => (
             <div key={label} className="contents">
               <div className="flex flex-col justify-center">
@@ -365,7 +365,7 @@ function JevMap({ middle, mid, jev, single }: { middle: Middle; mid: LaneState; 
         </div>
       </div>
       <p className="text-sm leading-relaxed text-muted">
-        EvoMap 蜂群和 Jev 蜂群只差青色这几格：领题、合并、防作恶是同一套规则；Jev 只替换「规则写不出来、又不值得每次都请大模型」的判断。
+        对照蜂群和 JIS 蜂群只差青色这几格：领题、合并、防作恶是同一套规则；Jev 只替换「规则写不出来、又不值得每次都请大模型」的判断。
       </p>
     </div>
   );
@@ -391,7 +391,7 @@ function Summary({ data, lanes, middle }: { data: RaceData; lanes: ReadonlyArray
   const vsMid = mcnemar(J, outcomes(mid, n));
   const jevJudge = laneAt(jev, data.judgeKeys, n, Infinity).total;
   const midJudge = laneAt(mid, data.judgeKeys, n, Infinity).total;
-  const midName = `EvoMap 蜂群（${middle === "rules" ? "规则判断" : "大模型判断"}）`;
+  const midName = middle === "rules" ? "规则蜂群" : "LLM 蜂群";
   const jevVerified = laneAt(jev, data.judgeKeys, n, Infinity).verified;
   const midVerified = laneAt(mid, data.judgeKeys, n, Infinity).verified;
   const judgeText = (id: LaneId, r: RaceRun) => {
@@ -402,8 +402,8 @@ function Summary({ data, lanes, middle }: { data: RaceData; lanes: ReadonlyArray
   };
 
   const lines = [
-    `Jev 蜂群答对 ${jev.final.correct} 题，单 Agent ${single.final.correct} 题：只有 Jev 蜂群答对的 ${vsSingle.onlyA} 题，只有单 Agent 答对的 ${vsSingle.onlyB} 题（${fmtP(vsSingle.p)}）。`,
-    `比 ${midName}多答对 ${jev.final.correct - mid.final.correct} 题：只有 Jev 蜂群答对 ${vsMid.onlyA} 题、只有 EvoMap 蜂群答对 ${vsMid.onlyB} 题（${fmtP(vsMid.p)}，${vsMid.p < 0.05 ? "差距显著" : "差距还不显著"}）。`,
+    `JIS 蜂群答对 ${jev.final.correct} 题，单 Agent ${single.final.correct} 题：只有 JIS 蜂群答对的 ${vsSingle.onlyA} 题，只有单 Agent 答对的 ${vsSingle.onlyB} 题（${fmtP(vsSingle.p)}）。`,
+    `比${midName}多答对 ${jev.final.correct - mid.final.correct} 题：只有 JIS 蜂群答对 ${vsMid.onlyA} 题、只有${midName}答对 ${vsMid.onlyB} 题（${fmtP(vsMid.p)}，${vsMid.p < 0.05 ? "差距显著" : "差距还不显著"}）。`,
     middle === "rules"
       ? `代价：花费 $${jev.final.costUsd.toFixed(2)} 对 $${mid.final.costUsd.toFixed(2)}，用时 ${Math.round(jev.durationMs / 1000)} 秒对 ${Math.round(mid.durationMs / 1000)} 秒。多出的钱里判断占 ${usd(jevJudge.jevUsd + jevJudge.llmUsd)}，其余主要是多做的复核：${jevVerified} 次对 ${midVerified} 次。`
       : `判断：大模型判断从 ${midJudge.llm} 次降到 ${jevJudge.llm} 次，Jev 做的 ${jevJudge.jev} 次判断一共 ${usd(jevJudge.jevUsd)}；总花费 $${jev.final.costUsd.toFixed(2)} 对 $${mid.final.costUsd.toFixed(2)}，用时 ${Math.round(jev.durationMs / 1000)} 秒对 ${Math.round(mid.durationMs / 1000)} 秒。`,
@@ -563,7 +563,7 @@ export function Race({ onReady }: { onReady?: () => void }) {
           {replaying && !done ? `回放中 · 真实时间 ${secs(t)} / ${secs(end)} 秒` : `最终结果 · 最慢的一路用了 ${secs(end)} 秒`}
         </span>
         <span className="flex flex-wrap items-center gap-1.5 text-sm text-muted lg:ml-auto">
-          EvoMap 蜂群的判断
+          对照蜂群的判断
           {(
             [
               ["rules", "固定规则"],
@@ -611,8 +611,8 @@ export function Race({ onReady }: { onReady?: () => void }) {
       <JevMap middle={middle} mid={mid} jev={jev} single={single} />
 
       <p className="text-sm leading-relaxed text-muted">
-        回放 2026-09-23 三次真实运行的事件记录，时间按所选倍速压缩，不会重新调用模型；每一格何时变色、每次判断由谁做、花了多少，都来自当次记录。EvoMap
-        蜂群是本项目按 EvoMap 公开的 gossip / adopt / forget 协议实现的，不是 EvoMap 官方代码。想看真跑一轮：
+        回放 2026-09-23 三次真实运行的事件记录，时间按所选倍速压缩，不会重新调用模型；每一格何时变色、每次判断由谁做、花了多少，都来自当次记录。规则蜂群和
+        LLM 蜂群是本项目按 EvoMap 公开的 gossip / adopt / forget 协议实现的，不是 EvoMap 官方的 EvoX。想看真跑一轮：
         {STATIC_SITE ? "按 GitHub 上的快速开始在本地运行现场演示。" : "进入现场演示。"}
       </p>
     </div>

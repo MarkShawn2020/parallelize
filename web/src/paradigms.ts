@@ -1,7 +1,7 @@
 import { EVIDENCE_ROWS, EVIDENCE_TOTAL } from "./evidence";
 
 /**
- * The nine-lecture ladder's seven measured rungs, in the order the pitch tells them. Numbers come from the same
+ * The seven measured rungs of the paradigm ladder, in the order the pitch tells them. Numbers come from the same
  * 2026-09-23 real runs as the evidence page (Haiku 4.5, 96 hard tasks), compared on accuracy, cost and speed.
  */
 export interface Paradigm {
@@ -30,9 +30,9 @@ const LADDER: ReadonlyArray<Omit<Paradigm, "correct" | "costUsd" | "wallS">> = [
   },
   {
     lecture: 2,
-    name: "同预算投票",
+    name: "单 Agent 投票",
     runId: "single-vote-20260923-152143-6b9c",
-    adds: "同一个 Agent 每题独立做 4 次取多数，和 Jev 蜂群花同样多的 token。",
+    adds: "同一个 Agent 每题独立做 4 次取多数，和 JIS 蜂群花同样多的 token。",
     fit: "只求单次准确率，不在乎钱和时间",
     cost: "多花 64% 的钱、最慢；坏一个就少一票，没有接力、防作恶和经验继承",
     tone: "muted",
@@ -66,7 +66,7 @@ const LADDER: ReadonlyArray<Omit<Paradigm, "correct" | "costUsd" | "wallS">> = [
   },
   {
     lecture: 6,
-    name: "大模型协调蜂群",
+    name: "LLM 蜂群",
     runId: "swarm-llm-20260923-152436-632f",
     adds: "规则写不出来的判断，全部交给大模型。",
     fit: "没有 Jev 的时候",
@@ -75,9 +75,9 @@ const LADDER: ReadonlyArray<Omit<Paradigm, "correct" | "costUsd" | "wallS">> = [
   },
   {
     lecture: 7,
-    name: "Jev 协调蜂群",
+    name: "JIS 蜂群",
     runId: "swarm-jev-20260923-151902-323c",
-    adds: "判断先交给 Jev（约半秒、只收输入的钱），拿不准才请大模型；大模型的裁决经复核确认后变成判例。",
+    adds: "判断先交给 Jev（约半秒、只收输入的钱）；Jev 拿不准的、和大模型分歧太大的那一类，交回大模型。",
     fit: "题量大、判断多，要在准确率、成本、速度之间取平衡",
     cost: "比规则蜂群只多 4 题，差距不显著（p=0.42）；「要不要复核」Jev 最近 8 次有 7 次和大模型不一致，系统自动交还",
     tone: "accent",

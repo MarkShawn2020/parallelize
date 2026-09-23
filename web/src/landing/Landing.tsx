@@ -34,7 +34,7 @@ const INDUSTRY: ReadonlyArray<[string, string, string]> = [
   ["2024", "OpenAI Swarm", "Agent + 交接（handoff）的教学框架，后被 Agents SDK 取代：先解决「谁接手」。"],
   ["2025.06", "Anthropic 多 Agent 研究系统", "主 Agent 派子 Agent，比单 Agent 强 90.2%，token 用量约为聊天的 15 倍。"],
   ["2025.06", "Cognition：别做多 Agent", "子 Agent 看不到完整上下文，各自的隐含决定会互相冲突。"],
-  ["2026.07", "EvoMap 蜂群实验", "563 题、Haiku 4.5：单上下文 26% → Sub-Agent 39% → EvoX 蜂群 71%；子 Agent 做对的 373 个答案，汇总后只剩 207 个还对。"],
+  ["2026.07", "EvoMap 蜂群实验", "563 题、Haiku 4.5：单上下文 26% → Sub-Agent 38% → EvoX 蜂群 71%；子 Agent 做对的 373 个答案，汇总后只剩 207 个还对。"],
   ["2026.09", "Jev：只判断、不写字", "System 1 模型，发布一周 X 上约 982 条讨论（jev-hub 统计）；主流用法是塞进单个 Agent 当判官。"],
 ];
 
@@ -57,23 +57,52 @@ const EXAMPLES: ReadonlyArray<[string, string, string]> = [
 ];
 
 const GHOST: ReadonlyArray<[string, string]> = [
-  ["Jev 反射", "System 1：只答是/否、选哪个、打几分，约半秒，只收输入的钱"],
-  ["大模型思考", "System 2：Jev 拿不准才出场；裁决经复核确认后变成判例，喂回 Jev"],
+  ["Jev 判断", "只答是/否、选哪个、打几分，约半秒，每万次约 $0.2；从不产出答案"],
+  ["大模型兜底", "Jev 调用失败时交给大模型；也可以设一个置信度阈值，把拿不准的判断交回大模型"],
   ["校准守卫", "某一类判断 Jev 和大模型分歧太大，整类自动交还大模型"],
 ];
 const SHELL: ReadonlyArray<[string, string]> = [
   ["黑板 + 租约", "原子领题，谁有空谁领；掉线租约到期自动退回，别人接手"],
-  ["能力卡 + 协议", "15 种消息，谁找谁不写死；任何模型的 Agent 亮卡即可加入"],
+  ["能力卡 + 协议", "15 种消息，谁找谁不写死；运行中能加入别的模型的 Agent（目前在同一进程内）"],
   ["谱系 + 独立来源", "每个答案带来源；抄来的一致只算一个出处，防虚假共识"],
-  ["Gene + 信誉", "经验在邻居间传递，收不收自己判断；信誉过低自动隔离"],
+  ["Gene + 信誉", "经验在邻居间传递，收不收由 Jev 判断；信誉过低自动隔离"],
 ];
 
-const USAGE: ReadonlyArray<[string, string, string, boolean]> = [
-  ["大屏 Dashboard", "讲解视图给观众看，工程视图看细节；现场注入入侵、回声、掉线、断开 Jev。", "pnpm start  →  http://localhost:8787/#/live", true],
-  ["HTTP API", "启动一轮、实时操控、WebSocket 推送全部事件。", `curl -X POST localhost:8787/api/runs -H 'Content-Type: application/json' -d '{"mode":"swarm-jev","n":96}'`, true],
-  ["命令行 CLI", "一条命令跑完 7 种范式的对照表。", "pnpm bench --mode all --n 96 --difficulty hard", true],
-  ["协议 PROTOCOL.md", "15 种消息 + 能力卡：任何模型的 Agent 实现几条消息就能加入同一个壳。", "ANNOUNCE · CLAIM · PROPOSE · REVIEW_REQUEST · GENE_OFFER …", true],
-  ["SDK / Skill", "把自己的任务交给蜂群：一行代码，或对 Claude Code / Codex 说一句话。", "createSwarm({ tasks }) · 「用蜂群验证这个点子」", false],
+/** Seed 7, the same 96 hard tasks, 8 cells; only the executor and the judge change. [correct, cost USD, wall s] per judge. */
+const JUDGES = ["规则", "Jev", "Haiku 4.5", "Sonnet 5", "Opus 5"] as const;
+const JUDGE_MATRIX: ReadonlyArray<[string, ReadonlyArray<readonly [number, number, number]>]> = [
+  [
+    "Haiku 4.5 做题",
+    [
+      [81, 0.154, 44],
+      [88, 0.323, 124],
+      [80, 0.31, 101],
+      [90, 0.571, 134],
+      [85, 0.731, 152],
+    ],
+  ],
+  [
+    "Sonnet 5 做题",
+    [
+      [89, 0.374, 71],
+      [95, 0.749, 159],
+      [92, 0.602, 126],
+      [93, 0.746, 154],
+      [93, 0.836, 123],
+    ],
+  ],
+];
+
+type Status = "已上线" | "开发中" | "规划中";
+const STATUS_TONE: Record<Status, string> = { 已上线: "text-accent", 开发中: "text-s2", 规划中: "text-muted" };
+const USAGE: ReadonlyArray<[string, string, string, Status]> = [
+  ["大屏 Dashboard", "讲解视图给观众看，工程视图看细节；现场注入入侵、回声、掉线、断开 Jev。", "pnpm start  →  http://localhost:8787/#/live", "已上线"],
+  ["HTTP API", "启动一轮、实时操控、WebSocket 推送全部事件。", `curl -X POST localhost:8787/api/runs -H 'Content-Type: application/json' -d '{"mode":"swarm-jev","n":96}'`, "已上线"],
+  ["命令行 CLI", "一条命令跑完 7 种范式的对照表；换判断模型重跑同一张卷。", "pnpm bench --mode all --n 96 --difficulty hard", "已上线"],
+  ["协议 PROTOCOL.md", "15 种消息 + 能力卡；进程内已实现，外部 Agent 联网接入尚未实现。", "ANNOUNCE · CLAIM · PROPOSE · REVIEW_REQUEST · GENE_OFFER …", "已上线"],
+  ["判断中间件", "Jev 先判、大模型兜底、校准守卫，打包成一个可以接进任何 Agent 系统的接口。", "new EscalatingJudge({ s1: jev, s2: llm, threshold, guard })", "开发中"],
+  ["JIS Skill", "扫描项目里的大模型调用，找出是/否、选择、打分这类判断，估算换成 Jev 能省多少。", "「用 JIS 看看这个项目哪些调用能换成 Jev」", "规划中"],
+  ["生态接入", "EvoMap 协议与 EvoX、Claude Code、Codex、DeepSeek Harness：把其中的判断调用接到 Jev。", "gossip · adopt · forget · 合并验证 …", "规划中"],
 ];
 
 function Section({ id, eyebrow, title, children, lead }: { id: string; eyebrow: string; title: string; lead?: string; children: ReactNode }) {
@@ -125,19 +154,19 @@ function FrameworkPage() {
       <section className="relative overflow-hidden">
         <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-20 md:py-28">
           <div className="flex flex-col gap-5">
-            <span className="font-mono text-sm tracking-widest text-accent">EvoTavern 4th · SECTION 9 多 Agent 蜂群协作 · JIS</span>
+            <span className="font-mono text-sm tracking-widest text-accent">EvoTavern 4th · SECTION 9 多 Agent 蜂群协作 · P2501 Team</span>
             <h1 className="font-display text-7xl leading-none font-bold tracking-[0.06em] text-fg md:text-8xl">
               <span className="text-accent">JIS</span> · Jev in the Shell
             </h1>
             <p className="max-w-[860px] text-xl leading-relaxed text-fg/85 md:text-2xl">
-              一个没有指挥官的 Agent 蜂群框架：能写成规则的协调用规则（0 token），规则写不出来的判断交给 Jev，拿不准才请大模型。
-              <span className="text-accent">大模型想明白一次，全体从此变成反射。</span>
+              把 Agent 系统里的判断从大模型换成 Jev 的框架：要不要复核、收不收经验、两个答案听谁的，交给 Jev；大模型专心解题。8 个 Agent 的蜂群实测：
+              <span className="text-accent">每次判断便宜约 27 倍，准确率与大模型判断打平。</span>
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <Stat value="80% → 89%" label="96 道困难题，同一个模型 Haiku 4.5：每题各做各的 → Jev 协调蜂群" />
-            <Stat value="34 : 9" label="两次合计 288 题按题配对：只有蜂群答对 34 题，只有单干答对 9 题（p = 0.00017）" />
-            <Stat value="约 27×" label="每次协调判断，Jev 比大模型便宜：1 万次判断约 $0.2 对 $5.4（实测）" tone="text-s1" />
+            <Stat value="约 27×" label="每次判断的花费：Jev 约 $0.2 / 万次，Haiku 当判断者约 $5.4 / 万次；Jev 一次约半秒（实测）" tone="text-s1" />
+            <Stat value="88 · 90 · 85" label="同一批 96 道困难题、Haiku 4.5 做题，只换判断者：Jev 88、Sonnet 5 90、Opus 5 85，配对检验分不出高下" />
+            <Stat value="34 : 9" label="两批共 288 题按题配对：只有 JIS 蜂群答对 34 题，只有每题各做各的答对 9 题（p = 0.00017）" />
           </div>
           <div className="flex flex-wrap gap-3">
             <a href={COMPARE_ROUTE} className="bg-accent px-6 py-3 text-lg font-semibold text-bg hover:bg-accent/85">
@@ -177,11 +206,11 @@ function FrameworkPage() {
         id="framework"
         eyebrow="JIS 框架"
         title="Jev in the Shell：壳管协作，魂管判断"
-        lead="壳（Shell）是零 token 的协作规则，魂（Ghost）是会判断的一层。Agent 可以是任何模型，只要说同一套协议，就能进同一个壳。"
+        lead="壳（Shell）是协作规则：领题、租约、合并、隔离都不调用模型。魂（Ghost）是判断层，默认装 Jev。做题的 Agent 可以是不同模型，说同一套协议就能进同一个壳。"
       >
         {[
           ["GHOST", "魂 · 判断层", GHOST, "border-s1", "text-s1", "lg:grid-cols-[180px_repeat(3,minmax(0,1fr))]"],
-          ["SHELL", "壳 · 协作层（0 token）", SHELL, "border-accent", "text-accent", "lg:grid-cols-[180px_repeat(4,minmax(0,1fr))]"],
+          ["SHELL", "壳 · 协作层（规则）", SHELL, "border-accent", "text-accent", "lg:grid-cols-[180px_repeat(4,minmax(0,1fr))]"],
         ].map(([name, sub, items, border, text, cols]) => (
           <div key={name as string} className={`grid gap-3 border-2 ${border as string} bg-panel/90 p-5 ${cols as string}`}>
             <div className="flex flex-col justify-center gap-1">
@@ -202,19 +231,58 @@ function FrameworkPage() {
         id="replay"
         eyebrow="看得见的蜂群"
         title="每个 Agent 在干什么、彼此传了什么"
-        lead="下面是主对照里 Jev 蜂群那一轮的真实事件流回放：节点下写着它此刻在做什么，外圈闪青色是 Jev 在判断、琥珀色是交给了大模型，紫色光点是经验在邻居间传。"
+        lead="下面是主对照里 JIS 蜂群那一轮（Jev 与大模型混合判断）的真实事件流回放：节点下写着它此刻在做什么，外圈闪青色是 Jev 在判断、琥珀色是交给了大模型，紫色光点是经验在邻居间传。"
       >
         <ReplaySwarm />
       </Section>
 
-      <Section id="usage" eyebrow="怎么用" title="五种接法，拿去就能跑">
+      <Section
+        id="judges"
+        eyebrow="只换判断者"
+        title="判断换成 Jev，准确率没有掉"
+        lead="同一个 8 Agent 蜂群、同一批 96 道困难题，只换两样：谁做题，谁判断。10 格是 10 次真实运行。"
+      >
+        <div className="overflow-x-auto border border-grid bg-panel/90 p-5">
+          <div className="grid min-w-[520px] grid-cols-[80px_repeat(5,minmax(0,1fr))] gap-2 md:min-w-[760px] md:grid-cols-[150px_repeat(5,minmax(0,1fr))]">
+            <span className="self-end text-sm text-muted">做题 \ 判断</span>
+            {JUDGES.map((j) => (
+              <span key={j} className={`text-center text-sm font-semibold ${j === "Jev" ? "text-s1" : "text-fg/85"}`}>
+                {j}
+              </span>
+            ))}
+            {JUDGE_MATRIX.map(([row, cells]) => (
+              <div key={row} className="contents">
+                <span className="self-center text-base font-semibold text-fg">{row}</span>
+                {cells.map(([correct, usd, wall], i) => (
+                  <div
+                    key={JUDGES[i]}
+                    className={`flex flex-col items-center gap-0.5 border px-2 py-3 ${JUDGES[i] === "Jev" ? "border-s1 bg-s1/10" : "border-grid bg-bg"}`}
+                  >
+                    <span className={`font-mono text-3xl font-bold tabular-nums ${JUDGES[i] === "Jev" ? "text-s1" : "text-fg"}`}>{correct}</span>
+                    <span className="font-mono text-xs text-muted tabular-nums">${usd.toFixed(2)}</span>
+                    <span className="font-mono text-xs text-muted tabular-nums">{wall} 秒</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        <ul className="flex flex-col gap-1.5 text-sm leading-relaxed text-fg/80">
+          <li>配对检验：两种做题模型下，Jev 与 Sonnet 5、Opus 5 判断都分不出高下；Haiku 做题时，Jev 比 Haiku 自己判多对 8 题（10 : 2，p = 0.039，单次运行、未做多重比较校正）。</li>
+          <li>Jev 判断一轮约 $0.003；Haiku 做题时整轮 $0.32，Sonnet 5 判断 $0.57。换 Sonnet 5 做题后，做题本身变贵，两者整轮花费持平。</li>
+          <li>分数来自更多独立复核：判断便宜，蜂群就对更多答案再做一遍（Haiku 做题时复核 108 次，Sonnet 5 判断时 48 次）。</li>
+        </ul>
+        <p className="text-xs text-muted">seed 7 · 每格一次真实运行（2026-09-23/24）· 答对题数 / 96 · 原始记录在仓库 runs/</p>
+      </Section>
+
+      <Section id="usage" eyebrow="怎么用" title="现在能用的，和接下来要接的">
         <div className="flex flex-col gap-3">
-          {USAGE.map(([title, body, code, ready]) => (
+          {USAGE.map(([title, body, code, status]) => (
             <div key={title} className="grid items-center gap-3 border border-grid bg-panel/90 p-4 md:grid-cols-[200px_minmax(0,1fr)_minmax(0,1.2fr)_80px]">
               <span className="text-lg font-semibold text-fg">{title}</span>
               <span className="text-sm leading-relaxed text-fg/75">{body}</span>
               <code className="overflow-x-auto bg-bg px-3 py-2 font-mono text-xs whitespace-nowrap text-s1">{code}</code>
-              <span className={`text-center text-sm ${ready ? "text-accent" : "text-s2"}`}>{ready ? "已上线" : "开发中"}</span>
+              <span className={`text-center text-sm ${STATUS_TONE[status]}`}>{status}</span>
             </div>
           ))}
         </div>
@@ -224,18 +292,18 @@ function FrameworkPage() {
         id="value"
         eyebrow="经济价值"
         title="把判断变便宜，复核才划算"
-        lead="协调里最贵的是判断：这条经验收不收、两个答案算不算真分歧、要不要再复核。Jev 把它变成半秒、几乎不花钱的反射，多复核一次才划算。"
+        lead="Agent 系统里有大量判断：这条经验收不收、两个答案算不算真分歧、要不要再复核。交给大模型，每次都按大模型计费；交给 Jev，约半秒、几乎不花钱，省下的钱可以多复核一轮。"
       >
         <div className="grid gap-3 md:grid-cols-3">
-          <Stat value="$5.4 → $0.2" label="每 1 万次协调判断：大模型 → Jev（主对照实测，约 27 倍）" tone="text-s1" />
-          <Stat value="$0.30 对 $0.49" label="准确率与同预算投票打平（89% 对 91%，差距不显著 p = 0.80），整轮少花 39%，快 22 秒" />
-          <Stat value="0 token" label="领题、租约、合并、回声检测全是规则，不花一个 token" tone="text-fg" />
+          <Stat value="$5.4 → $0.2" label="每 1 万次判断：Haiku 当判断者 → Jev（主对照实测，约 27 倍）" tone="text-s1" />
+          <Stat value="$0.32 对 $0.57" label="Haiku 做题时，判断交给 Jev 与交给 Sonnet 5 准确率打平（88 对 90，p = 0.69），整轮便宜 43%" />
+          <Stat value="0 token" label="领题、租约、合并、回声检测、隔离全是规则，不调用模型" tone="text-fg" />
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           {[
             ["判断密集的批处理", "客服分单、内容审核、批量评测：每一条都要回答「是不是、选哪个」。"],
             ["需要留痕的结论", "点子验证、尽调、研究：每条论断报独立来源数，混入金丝雀防被带偏。"],
-            ["先选型，再上蜂群", "不是每件事都值得上蜂群：九讲的对比就是一张选型表。"],
+            ["先选型，再上蜂群", "不是每件事都值得上蜂群：框架对比页的七种范式就是一张选型表。"],
           ].map(([t, b]) => (
             <article key={t} className="flex flex-col gap-2 border border-grid bg-panel/90 p-5">
               <h3 className="text-lg font-semibold text-fg">{t}</h3>
@@ -254,7 +322,7 @@ function ComparePage({ onRaceReady, onOpenBank }: { onRaceReady: () => void; onO
       <section className="border-b border-grid">
         <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 pt-14 pb-8 md:pt-20">
           <span className="font-mono text-sm tracking-widest text-accent">框架对比 · 同一张考卷、同一个做题模型</span>
-          <h1 className="text-4xl leading-tight font-bold text-fg md:text-5xl">单 Agent、EvoMap 蜂群、Jev 蜂群，同时做 96 道题</h1>
+          <h1 className="text-4xl leading-tight font-bold text-fg md:text-5xl">单 Agent、规则 / LLM 蜂群、JIS 蜂群，同时做 96 道题</h1>
           <p className="max-w-[860px] text-lg leading-relaxed text-fg/80">
             三种方式考同一张卷、用同一个做题模型 Haiku 4.5，只换协作方式。下面先是三种方式各自交卷后的结果：每个格子是一道题，绿色答对、红色答错。点「重跑一遍」，看三条车道同时从头做题：青色是 Jev
             在判断，琥珀色是交给了大模型。
@@ -286,7 +354,7 @@ function ComparePage({ onRaceReady, onOpenBank }: { onRaceReady: () => void; onO
             onOpen={() => onOpenBank()}
           />
           <Stat value="Haiku 4.5" label="做题模型：Claude Haiku 4.5，与 EvoMap 蜂群实验同款" tone="text-fg" />
-          <Stat value="Jev 1.13" label="判断模型：typesafe/jev-1.13（经 OpenRouter）；拿不准时交给 Haiku 当大模型裁判" tone="text-s1" />
+          <Stat value="Jev 1.13" label="判断模型：typesafe/jev-1.13（经 OpenRouter）；这一轮里一部分判断交回 Haiku" tone="text-s1" />
         </div>
         <div className="grid gap-3 lg:grid-cols-3">
           {EXAMPLES.map(([title, prompt, note]) => (
@@ -308,8 +376,8 @@ function ComparePage({ onRaceReady, onOpenBank }: { onRaceReady: () => void; onO
 
       <Section
         id="paradigms"
-        eyebrow="九讲 · 范式怎么切换、怎么对比"
-        title="从单 Agent 一步步演化到 Jev 协调蜂群"
+        eyebrow="七种范式 · 怎么切换、怎么对比"
+        title="从单 Agent 一步步演化到 JIS 蜂群"
         lead="每一讲只多加一样东西。点左边切换范式，右边选一个对比对象：雷达上叠出两种范式各自的长短。"
       >
         <ParadigmExplorer />
@@ -337,7 +405,7 @@ function ComparePage({ onRaceReady, onOpenBank }: { onRaceReady: () => void; onO
         <p className="text-sm text-muted">小雷达三个角：上准确率 · 右下成本 · 左下速度，越往外越准、越省、越快。没有全能冠军，只有该用谁。</p>
       </Section>
 
-      <Section id="data" eyebrow="数据报告" title={EVIDENCE_TITLE} lead="准确率不是越往上越高：同预算投票最准但最贵；能站住的结论是蜂群胜过个体之和。">
+      <Section id="data" eyebrow="数据报告" title={EVIDENCE_TITLE} lead="准确率不是越往上越高：单 Agent 投票最准但最贵；能站住的结论是蜂群胜过个体之和。">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-3 border border-grid bg-panel/90 p-5">
             {EVIDENCE_ROWS.map((r) => (
@@ -471,7 +539,7 @@ export function Landing({ liveRunning }: Props) {
       <footer className="border-t border-grid py-10">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-8 gap-y-4 px-4">
           <img src="/brand/shougongchuan-logo-white.png" alt="手工川" className="h-9 w-auto" />
-          <span className="text-sm text-fg/75">手工川 · Lovstudio.AI · EvoTavern 4th 单人参赛</span>
+          <span className="text-sm text-fg/75">P2501 Team · 手工川 · Lovstudio.AI · EvoTavern 4th</span>
           <span className="flex-1" />
           <a href={REPO} className="text-sm text-fg/75 hover:text-fg">
             GitHub

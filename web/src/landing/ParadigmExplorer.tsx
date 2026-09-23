@@ -35,7 +35,7 @@ export function ParadigmExplorer() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-      <ol className="flex flex-col gap-2" aria-label="九讲范式">
+      <ol className="flex flex-col gap-2" aria-label="七种范式">
         {PARADIGMS.map((x, i) => (
           <li key={x.runId}>
             <button
@@ -47,14 +47,14 @@ export function ParadigmExplorer() {
               }`}
             >
               <span className="flex items-baseline gap-3">
-                <span className="font-mono text-sm text-muted">第 {x.lecture} 讲</span>
+                <span className="font-mono text-sm text-muted">第 {x.lecture} 档</span>
                 <span className={`text-lg font-semibold ${i === pick ? TONE[x.tone].text : "text-fg"}`}>{x.name}</span>
               </span>
               <span className="font-mono text-lg text-fg/80 tabular-nums">{Math.round(accuracyOf(x))}%</span>
             </button>
           </li>
         ))}
-        <li className="px-1 pt-2 text-sm leading-relaxed text-muted">第 8 讲容错与安全、第 9 讲经验与生态，在首页的蜂群回放和现场演示里看。</li>
+        <li className="px-1 pt-2 text-sm leading-relaxed text-muted">容错与安全、经验与生态不在这张表里，在首页的蜂群回放和现场演示里看。</li>
       </ol>
 
       <div className="flex flex-col gap-6 border border-grid bg-panel p-6">
@@ -84,7 +84,7 @@ export function ParadigmExplorer() {
               >
                 {PARADIGMS.map((x, i) => (
                   <option key={x.runId} value={i}>
-                    第 {x.lecture} 讲 · {x.name}
+                    第 {x.lecture} 档 · {x.name}
                   </option>
                 ))}
               </select>

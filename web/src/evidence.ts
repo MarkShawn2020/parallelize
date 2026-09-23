@@ -63,18 +63,18 @@ export const EVIDENCE_ROWS: readonly EvidenceRow[] = [
   },
   {
     runId: "swarm-rules-20260923-152617-a404",
-    label: "蜂群 · 只用固定规则",
+    label: "规则蜂群",
     correct: 81,
     total: EVIDENCE_TOTAL,
     costUsd: 0.153961,
     wallS: 43.781,
     style: "dim",
     // Said on screen before a judge asks: Jev's lead over plain rules is not significant (paired p = 0.42).
-    note: "比 Jev 协调只少 4 题，差距不显著（p = 0.42）",
+    note: "比 JIS 蜂群只少 4 题，差距不显著（p = 0.42）",
   },
   {
     runId: "swarm-llm-20260923-152436-632f",
-    label: "蜂群 · 大模型协调",
+    label: "LLM 蜂群（Haiku 判断）",
     correct: 80,
     total: EVIDENCE_TOTAL,
     costUsd: 0.309951,
@@ -83,7 +83,7 @@ export const EVIDENCE_ROWS: readonly EvidenceRow[] = [
   },
   {
     runId: "swarm-jev-20260923-151902-323c",
-    label: "蜂群 · Jev 协调",
+    label: "JIS 蜂群（Jev + 大模型）",
     correct: 85,
     total: EVIDENCE_TOTAL,
     costUsd: 0.295811,
@@ -95,7 +95,7 @@ export const EVIDENCE_ROWS: readonly EvidenceRow[] = [
   },
   {
     runId: "single-vote-20260923-152143-6b9c",
-    label: "单个 Agent 同预算投票",
+    label: "单 Agent 投票",
     correct: 87,
     total: EVIDENCE_TOTAL,
     costUsd: 0.485061,
@@ -117,7 +117,7 @@ export const EVIDENCE_BOXES: readonly EvidenceBox[] = [
     title: "Jev 的账（主对照这一场）",
     lines: [
       "Jev 拍板 84 次，另有 20 次没把握转给大模型 · Jev 一共 0.2 美分 · 一次约半秒",
-      "全交给大模型的那一场判断 155 次 → Jev 蜂群里大模型只判 77 次 · 总花费持平",
+      "全交给大模型的那一场判断 155 次 → JIS 蜂群里大模型只判 77 次 · 总花费持平",
       "代价：「要不要复核」Jev 和大模型最近 8 次有 7 次不一致 → 自动交还大模型",
     ],
   },

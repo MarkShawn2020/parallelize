@@ -23,8 +23,8 @@ type Filter = "all" | "jev-only" | "jev-wrong" | "all-right" | "all-wrong";
 
 const FILTERS: ReadonlyArray<[Filter, string]> = [
   ["all", "全部"],
-  ["jev-only", "Jev 蜂群对、只并行错"],
-  ["jev-wrong", "Jev 蜂群答错"],
+  ["jev-only", "JIS 蜂群对、只并行错"],
+  ["jev-wrong", "JIS 蜂群答错"],
   ["all-right", "七种都对"],
   ["all-wrong", "七种都错"],
 ];
