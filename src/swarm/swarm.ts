@@ -121,6 +121,8 @@ interface EchoMark {
   cells?: Set<string>;
   /** When the named cells' reservation started (first proposal present). */
   since?: number;
+  /** Injected before any answer: the named cells hold the task until one of them answers it first. */
+  waitingSince?: number;
 }
 
 interface GeneInfo {
@@ -137,6 +139,8 @@ const ERROR_BACKOFF_MS = 500;
 const ECHO_SOLVES = 2;
 // Named echo cells get the task to themselves for a while, so the echo shows up on stage within seconds.
 const ECHO_RESERVE_MS = 5000;
+// An unanswered echo task waits this long for a named cell to come free before anyone may answer it.
+const ECHO_WAIT_MS = 10_000;
 const DECLINES_BEFORE_FORCE = 3;
 const ADOPT_THRESHOLD = 0.5;
 
@@ -206,6 +210,8 @@ export class Swarm {
   private readonly handles = new Map<string, CellHandle>();
   private readonly llms = new Map<string, LLM>();
   private readonly echo = new Map<string, EchoMark>();
+  /** taskId -> solves that copied an injected echo. They are not independent attempts, so they leave MAX_ATTEMPTS to clean solvers. */
+  private readonly echoCopies = new Map<string, number>();
   /** proposalId -> gene the solver used, credited once the task is accepted. */
   private readonly proposalGene = new Map<string, string>();
   private readonly genes = new Map<string, GeneInfo>();
@@ -353,7 +359,7 @@ export class Swarm {
     this.echo.set(
       id,
       targets.length > 0
-        ? { left: targets.length, cells: new Set(targets), ...(first ? { since: this.now() } : {}) }
+        ? { left: targets.length, cells: new Set(targets), ...(first ? { since: this.now() } : { waitingSince: this.now() }) }
         : { left: ECHO_SOLVES },
     );
     if (first && entry.status !== "verifying") this.requestReview(id, first.cellId, "echo", false);
@@ -709,7 +715,11 @@ export class Swarm {
 
   private echoReservation(taskId: string): Set<string> | undefined {
     const mark = this.echo.get(taskId);
-    if (!mark?.cells || mark.since === undefined || this.now() - mark.since >= ECHO_RESERVE_MS) return undefined;
+    if (!mark?.cells) return undefined;
+    const now = this.now();
+    const held =
+      mark.since !== undefined ? now - mark.since < ECHO_RESERVE_MS : mark.waitingSince !== undefined && now - mark.waitingSince < ECHO_WAIT_MS;
+    if (!held) return undefined;
     const entry = this.board.get(taskId);
     const pending = [...mark.cells].filter((id) => this.cells.get(id)?.working && !entry?.proposers.includes(id));
     return pending.length > 0 ? new Set(pending) : undefined;
@@ -807,6 +817,7 @@ export class Swarm {
     if (stuck && !this.holds(cell, task.id)) return;
     const gene = libraryGene ?? (this.learns ? cell.pool.best(task.domain) : undefined);
     const teammate = this.takeEcho(entry, cell);
+    if (teammate) this.echoCopies.set(task.id, (this.echoCopies.get(task.id) ?? 0) + 1);
 
     const r = await this.llmOf(cell).complete({
       messages: [
@@ -877,7 +888,8 @@ export class Swarm {
     const entry = this.board.get(taskId);
     if (!entry || isTerminal(entry)) return;
     const valid = this.validProposals(entry);
-    const res = resolveAfterProposal({ ...entry, proposals: valid }, this.lineage, {
+    const attempts = entry.attempts - (this.echoCopies.get(taskId) ?? 0);
+    const res = resolveAfterProposal({ ...entry, proposals: valid, attempts }, this.lineage, {
       needsVerification: forced !== null,
       maxAttempts: this.canVerify(entry) ? MAX_ATTEMPTS : 0,
       normalize: this.normalize,
@@ -1037,7 +1049,7 @@ export class Swarm {
     if (cell.quarantined) return;
     const judged = this.trust.judged(cell.id);
     if (!shouldQuarantine({ judged, trust, probation: this.config.probation, quarantineTrust: this.config.quarantineTrust })) return;
-    this.quarantine(cell, trust, `trust ${trust.toFixed(2)} < ${this.config.quarantineTrust} after ${judged} judged (last: ${why})`);
+    this.quarantine(cell, trust, `trust ${trust.toFixed(3)} < ${this.config.quarantineTrust} after ${judged} judged (last: ${why})`);
   }
 
   private quarantine(cell: Cell, trust: number, reason: string): void {
@@ -1279,13 +1291,29 @@ export class Swarm {
   }
 
   private echoCandidate(targets: string[]): TaskEntry | undefined {
-    const all = this.board.all().filter((e) => !isTerminal(e));
-    const lone = (e: TaskEntry) => {
-      const valid = this.validProposals(e);
-      return valid.length === 1 && !targets.includes(valid[0]?.cellId ?? "") && !targets.includes(e.claimedBy ?? "");
-    };
-    return all.find(lone) ?? all.find((e) => e.status === "open" && e.proposals.length === 0);
+    return pickEchoCandidate(this.board.all(), targets, this.now(), (e) => this.validProposals(e));
   }
+}
+
+/**
+ * A task the named cells can still reach: one answer so far, and nobody but its proposer holding it.
+ * A task another cell is already verifying settles before the named cells get there, so the echo never shows.
+ */
+export function pickEchoCandidate(
+  entries: readonly TaskEntry[],
+  targets: readonly string[],
+  now: number,
+  valid: (e: TaskEntry) => Proposal[],
+): TaskEntry | undefined {
+  const live = entries.filter((e) => !isTerminal(e));
+  const lone = (e: TaskEntry) => {
+    const proposals = valid(e);
+    const proposer = proposals[0]?.cellId;
+    if (proposals.length !== 1 || proposer === undefined || targets.includes(proposer)) return false;
+    const holder = e.leaseUntil !== undefined && e.leaseUntil > now ? e.claimedBy : undefined;
+    return holder === undefined || holder === proposer;
+  };
+  return live.find(lone) ?? live.find((e) => e.status === "open" && e.proposals.length === 0);
 }
 
 const cellName = (n: number): string => `c${String(n).padStart(2, "0")}`;

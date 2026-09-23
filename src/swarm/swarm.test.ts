@@ -6,8 +6,8 @@ import { MemoryLedger, meterLLM } from "../core/ledger";
 import { LineageGraph } from "../core/lineage";
 import { sleep } from "../core/rng";
 import { MARK, QK } from "../core/types";
-import type { Answer, Domain, Judge, LLM, LLMRequest, PublicTask, RunConfig, SwarmEvent } from "../core/types";
-import { Swarm } from "./swarm";
+import type { Answer, Domain, Judge, LLM, LLMRequest, Proposal, PublicTask, RunConfig, SwarmEvent } from "../core/types";
+import { pickEchoCandidate, Swarm } from "./swarm";
 
 const DOMAINS: Domain[] = ["arithmetic", "rates", "logic"];
 const USAGE = { inputTokens: 10, outputTokens: 5, costUsd: 0.001 };
@@ -103,7 +103,7 @@ function makeSwarm(s: Setup) {
     isCorrect: (id, answer) => truth.get(id) === answer,
   });
   const ofType = <T extends SwarmEvent["type"]>(type: T) => events.filter((e): e is Extract<SwarmEvent, { type: T }> => e.type === type);
-  return { swarm, events, ofType, board, truth };
+  return { swarm, events, ofType, board, truth, bus };
 }
 
 async function waitFor(check: () => boolean, timeoutMs = 5000): Promise<void> {
@@ -243,6 +243,56 @@ describe("Swarm", () => {
     swarm.stop("stopped");
     await run;
     expect(swarm.abortReason()).toBe("stopped");
+  });
+
+  it("holds an unanswered echo task for the named cells, so the alarm shows within seconds on stage", async () => {
+    const { swarm, ofType } = makeSwarm({ n: 12, cells: 4, solveDelayMs: 20 });
+    const run = swarm.start();
+    await waitFor(() => ofType("task.claimed").length >= 4);
+    const taskId = swarm.injectEcho(undefined, ["c03", "c04"]);
+    await run;
+    const claims = ofType("task.claimed").filter((e) => e.taskId === taskId);
+    expect(["c03", "c04"]).toContain(claims[0]?.cellId);
+    const copied = ofType("task.proposed").filter((e) => e.taskId === taskId && e.sawProposals.length > 0);
+    expect(copied.length).toBeGreaterThan(0);
+    expect(copied.every((e) => e.cellId === "c03" || e.cellId === "c04")).toBe(true);
+    expect(ofType("echo.detected").some((e) => e.taskId === taskId)).toBe(true);
+  });
+
+  it("never lets named echo copies use up the attempts and force a one-source accept", async () => {
+    const { swarm, ofType, bus } = makeSwarm({ n: 6, cells: 5, verifyNoul: 0.9, solveDelayMs: 30 });
+    let echoed: { taskId: string; proposer: string } | undefined;
+    bus.on((e) => {
+      if (echoed || e.type !== "task.proposed") return;
+      const named = ["c01", "c02", "c03", "c04", "c05"].filter((c) => c !== e.cellId).slice(0, 3);
+      echoed = { taskId: swarm.injectEcho(e.taskId, named), proposer: e.cellId };
+    });
+    await swarm.start();
+    const taskId = echoed?.taskId;
+    expect(ofType("task.proposed").filter((e) => e.taskId === taskId && e.sawProposals.length > 0)).toHaveLength(3);
+    expect(ofType("echo.detected").some((e) => e.taskId === taskId)).toBe(true);
+    const accepted = ofType("task.accepted").find((e) => e.taskId === taskId);
+    expect(accepted?.independentSources).toBeGreaterThanOrEqual(2);
+  });
+
+  it("picks an echo task nobody but its proposer holds, so the named cells can still reach it", () => {
+    const tasks: PublicTask[] = ["t1", "t2", "t3"].map((id) => ({ id, domain: "arithmetic", prompt: id }));
+    const board = new InMemoryBlackboard(tasks, { leaseMs: 5000 });
+    const now = 1_000;
+    const answer = (taskId: string, cellId: string): Proposal => ({ id: `${taskId}-${cellId}`, taskId, cellId, answer: "7", summary: "", at: now });
+    for (const [taskId, cellId] of [["t1", "c04"], ["t2", "c05"]] as const) {
+      board.claim(taskId, cellId, now);
+      board.propose(answer(taskId, cellId));
+      board.requestVerification(taskId);
+    }
+    // c06 is already verifying t1: it settles t1 before any named cell arrives.
+    board.claim("t1", "c06", now);
+    const valid = (e: { proposals: Proposal[] }) => e.proposals;
+    expect(pickEchoCandidate(board.all(), ["c01", "c02"], now, valid)?.task.id).toBe("t2");
+    // Once c06's lease lapses, t1 is reachable again.
+    expect(pickEchoCandidate(board.all(), ["c01", "c02"], now + 6000, valid)?.task.id).toBe("t1");
+    // A named cell's own answer can't be echoed back to it; fall back to a fresh open task.
+    expect(pickEchoCandidate(board.all(), ["c05"], now, valid)?.task.id).toBe("t3");
   });
 
   it("rejects echo injection on unknown or settled tasks", async () => {
