@@ -24,6 +24,7 @@ import { FileExperienceLibrary } from "./protocol/library";
 import { EvoMapClient } from "./providers/evomap";
 import { startRun } from "./run";
 import type { RunHandle, StartRunOptions } from "./run";
+import { configureNetwork } from "./providers/net";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_ECHO_CELLS = 3;
@@ -338,6 +339,7 @@ export function createAppServer(opts: AppServerOptions): AppServer {
 }
 
 function main(): void {
+  configureNetwork();
   const host = process.env.HOST ?? "127.0.0.1";
   const port = Number(process.env.PORT ?? 8787);
   const production = process.env.NODE_ENV === "production";

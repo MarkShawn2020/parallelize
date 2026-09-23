@@ -7,6 +7,7 @@ import { SimpleEventBus } from "../core/events";
 import { MODES, SWARM_MODES } from "../core/types";
 import type { Mode, ResearchReport, RunConfig, RunSummary } from "../core/types";
 import { startRun } from "../run";
+import { configureNetwork } from "../providers/net";
 
 /** swarm-jev first: its total tokens become single-vote's budget, so both spend the same. */
 export const BENCH_ORDER: readonly Mode[] = ["swarm-jev", "single", "single-vote", "subagent", "swarm-llm", "swarm-rules", "swarm-solo"];
@@ -252,6 +253,7 @@ async function main(): Promise<number> {
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  configureNetwork();
   main().then(
     (code) => process.exit(code),
     (err: unknown) => {

@@ -6,6 +6,7 @@ import type { Judge, LLM, Usage } from "../core/types";
 import { JevJudge } from "../providers/jev";
 import { OpenAICompatLLM } from "../providers/openai-llm";
 import { extractFinalAnswer } from "../tasks/check";
+import { configureNetwork } from "../providers/net";
 
 export interface SmokeLine {
   name: string;
@@ -88,6 +89,7 @@ async function main(): Promise<void> {
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  configureNetwork();
   main().then(
     () => process.exit(0),
     (err: unknown) => {

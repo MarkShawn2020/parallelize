@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { EvoMapClient, type EvoMapBundleInput } from "../providers/evomap";
+import { configureNetwork } from "../providers/net";
 
 const USAGE = `usage: pnpm evomap status
        pnpm evomap node
@@ -125,6 +126,7 @@ export async function runCli(argv: string[], deps: { client?: EvoMapClient; out?
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  configureNetwork();
   runCli(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (err: unknown) => {
