@@ -63,7 +63,7 @@ export interface StartRunOptions {
   bus: EventBus;
   runsDir: string;
   now?: () => number;
-  /** Overrides the latency range of every simulated provider (tests use [0, 0]). */
+  /** Overrides the latency range of every simulated provider (tests use [0, 0]); wins over config.simPace. */
   mockLatencyMs?: [number, number];
   /** Experience library directory; default `<runsDir>/library`. */
   libraryDir?: string;

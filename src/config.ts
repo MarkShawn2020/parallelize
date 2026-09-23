@@ -7,8 +7,12 @@ export const PROJECT_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)
 export const DATA_DIR = resolve(PROJECT_ROOT, "data");
 export const RUNS_DIR = resolve(PROJECT_ROOT, "runs");
 
-/** Models a runtime-spawned cell may use (all served by OpenRouter). */
-export const SPAWN_MODELS = ["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash", "openai/gpt-6-luna"] as const;
+/**
+ * Models a runtime-spawned cell may use: open-weight models on OpenRouter that accept reasoning "off"
+ * (GLM refuses to disable reasoning; closed-weight models are restricted on the account used for the demo).
+ */
+export const SPAWN_MODELS = ["deepseek/deepseek-v4.1-flash", "qwen/qwen3.8-flash"] as const;
+export const DEFAULT_LLM_MODEL = "deepseek/deepseek-v4.1-flash";
 
 export const DEFAULT_CONFIG: RunConfig = {
   mode: "swarm-jev",
@@ -18,6 +22,8 @@ export const DEFAULT_CONFIG: RunConfig = {
   taskSource: { kind: "synthetic" },
   judge: "jev",
   llm: "openrouter",
+  simPace: 1,
+  llmReasoning: "off",
   escalationThreshold: 0.5,
   verifyThreshold: 0.55,
   leaseMs: 30_000,
@@ -49,6 +55,11 @@ export const DEFAULT_CONFIG: RunConfig = {
 
 // Simulated calls take ~0.1-1.5s, so a short lease makes fault recovery visible within seconds.
 const MOCK_LEASE_MS = 3000;
+// A paced simulation keeps the lease above twice the slowest simulated solve (180 ms x simPace), so a killed
+// cell's task still reopens a few seconds after the kill. Cells renew while calls are in flight, so slower
+// calls (System 2 at high pace) never cost a healthy cell its lease.
+const PACED_LEASE_MS_PER_PACE = 400;
+const PACED_LEASE_MAX_MS = 15_000;
 const MAX_CELL_MODELS = 8;
 const MAX_MODEL_CHARS = 80;
 const MODEL_ID = /^[a-z0-9._~/:-]+$/i;
@@ -96,6 +107,7 @@ const NUMERIC: Record<NumericKey, Range> = {
   // A gene that does no better than no gene is never published.
   publishGateMinDelta: { min: 1, max: 64, integer: true },
   voteBudgetTokens: { min: 0, max: 50_000_000, integer: true },
+  simPace: { min: 1, max: 40, integer: false },
 };
 
 const BOOLEAN: readonly BooleanKey[] = ["inherit", "evomapLookup", "evomapPublish"];
@@ -156,6 +168,11 @@ function cellModels(raw: unknown): string[] {
   });
 }
 
+/** Default lease of a simulated run: 3 s at the default pace, growing with simPace up to 15 s. */
+function mockLeaseMs(simPace: number): number {
+  return Math.min(PACED_LEASE_MAX_MS, Math.max(MOCK_LEASE_MS, Math.round(PACED_LEASE_MS_PER_PACE * simPace)));
+}
+
 /** Boundary validation for POST /api/runs: StartRunRequest merged over DEFAULT_CONFIG. */
 export function parseRunConfig(body: unknown): RunConfig {
   if (!isRecord(body)) throw new Error("request body must be a JSON object");
@@ -175,11 +192,12 @@ export function parseRunConfig(body: unknown): RunConfig {
   if (body.llm !== undefined) cfg.llm = oneOf("llm", body.llm, ["openrouter", "mock"] as const);
   if (body.topology !== undefined) cfg.topology = oneOf("topology", body.topology, ["ring", "small-world"] as const);
   if (body.claimPolicy !== undefined) cfg.claimPolicy = oneOf("claimPolicy", body.claimPolicy, ["rule", "judge"] as const);
+  if (body.llmReasoning !== undefined) cfg.llmReasoning = oneOf("llmReasoning", body.llmReasoning, ["default", "off", "low"] as const);
   if (body.cellModels !== undefined) cfg.cellModels = cellModels(body.cellModels);
   if (body.taskSource !== undefined) cfg.taskSource = taskSource(body.taskSource);
   // The planner sets a research run's size, so n mirrors it for every display that reads config.n.
   if (cfg.taskSource.kind === "research") cfg.n = cfg.taskSource.claims + cfg.taskSource.canaries;
-  if (cfg.llm === "mock" && body.leaseMs === undefined) cfg.leaseMs = MOCK_LEASE_MS;
+  if (cfg.llm === "mock" && body.leaseMs === undefined) cfg.leaseMs = mockLeaseMs(cfg.simPace);
   return cfg;
 }
 
@@ -196,7 +214,7 @@ export function providerEnv(env: NodeJS.ProcessEnv = process.env): { llm: Provid
     llm: {
       baseUrl: pick(env.LLM_BASE_URL) ?? "https://openrouter.ai/api/v1",
       apiKey: pick(env.LLM_API_KEY, env.OPENROUTER_API_KEY),
-      model: pick(env.LLM_MODEL) ?? "anthropic/claude-haiku-4.5",
+      model: pick(env.LLM_MODEL) ?? DEFAULT_LLM_MODEL,
     },
     jev: {
       baseUrl: pick(env.JEV_BASE_URL) ?? "https://openrouter.ai/api/v1",

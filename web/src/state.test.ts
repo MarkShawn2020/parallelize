@@ -10,6 +10,8 @@ const config: RunConfig = {
   taskSource: { kind: "synthetic" },
   judge: "mock",
   llm: "mock",
+  simPace: 1,
+  llmReasoning: "off",
   escalationThreshold: 0.7,
   verifyThreshold: 0.5,
   leaseMs: 1000,

@@ -31,6 +31,16 @@ export interface RunConfig {
   judge: "jev" | "mock";
   /** System-2 provider for every mode. */
   llm: "openrouter" | "mock";
+  /**
+   * Multiplier applied to simulated provider latency (1 = default fast simulation; e.g. 10 makes mock LLM
+   * solves ~0.6-1.8 s). Real providers ignore it.
+   */
+  /**
+   * Reasoning pass of real LLM calls. off: answer directly (fast, error-prone individuals: the setting where
+   * collaboration has room to matter); low: a short reasoning pass; default: whatever the model does.
+   */
+  llmReasoning: "default" | "off" | "low";
+  simPace: number;
   /** Below this confidence a System-1 answer is escalated to System 2. */
   escalationThreshold: number;
   /** noul probability at or above which a proposal needs an independent re-solve. */

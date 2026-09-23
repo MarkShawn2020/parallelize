@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG, parseRunConfig, providerEnv, SPAWN_MODELS } from "./config";
+import { MOCK_LLM_LATENCY_MS } from "./providers/mock";
 
 describe("parseRunConfig", () => {
   it("merges a minimal request over the defaults", () => {
@@ -55,6 +56,21 @@ describe("parseRunConfig", () => {
     expect(parseRunConfig({ mode: "swarm-jev", llm: "mock" }).leaseMs).toBe(3000);
     expect(parseRunConfig({ mode: "swarm-jev", llm: "mock", leaseMs: 9000 }).leaseMs).toBe(9000);
     expect(parseRunConfig({ mode: "swarm-jev" }).leaseMs).toBe(30_000);
+  });
+
+  it("clamps simPace to 1..40 and stretches the default simulated lease with it", () => {
+    expect(DEFAULT_CONFIG.simPace).toBe(1);
+    const pace = (simPace: unknown) => parseRunConfig({ mode: "swarm-jev", llm: "mock", simPace }).simPace;
+    expect([10, 2.5, 0, -3, 99].map(pace)).toEqual([10, 2.5, 1, 1, 40]);
+    expect(() => pace("10")).toThrow(/simPace must be a finite number/);
+    expect(() => pace(Number.POSITIVE_INFINITY)).toThrow(/simPace/);
+
+    const lease = (simPace: number) => parseRunConfig({ mode: "swarm-jev", llm: "mock", simPace }).leaseMs;
+    expect([1, 5, 7.5, 10, 20, 40].map(lease)).toEqual([3000, 3000, 3000, 4000, 8000, 15_000]);
+    // A killed cell's task reopens within seconds, yet the lease outlasts the slowest simulated solve twice over.
+    for (let p = 1; p <= 40; p += 0.5) expect(lease(p)).toBeGreaterThan(2 * MOCK_LLM_LATENCY_MS[1] * p);
+    expect(parseRunConfig({ mode: "swarm-jev", llm: "mock", simPace: 10, leaseMs: 9000 }).leaseMs).toBe(9000);
+    expect(parseRunConfig({ mode: "swarm-jev", simPace: 10 }).leaseMs).toBe(30_000);
   });
 
   it("ships round-2 defaults: rule claims, review, quarantine, guard and everything external off", () => {
@@ -174,7 +190,7 @@ describe("parseRunConfig", () => {
 describe("providerEnv", () => {
   it("uses defaults and falls back to the OpenRouter key", () => {
     const env = providerEnv({ OPENROUTER_API_KEY: "or-key", LLM_API_KEY: "" });
-    expect(env.llm).toEqual({ baseUrl: "https://openrouter.ai/api/v1", apiKey: "or-key", model: "anthropic/claude-haiku-4.5" });
+    expect(env.llm).toEqual({ baseUrl: "https://openrouter.ai/api/v1", apiKey: "or-key", model: "deepseek/deepseek-v4.1-flash" });
     expect(env.jev).toEqual({ baseUrl: "https://openrouter.ai/api/v1", apiKey: "or-key", model: "typesafe/jev-1.13" });
   });
 

@@ -23,7 +23,9 @@ const DIFFICULTIES: ReadonlyArray<[Difficulty, string, string]> = [
   ["hard", "困难", "困难：6-9 步，含干扰条件、单位换算与百分比 hard"],
 ];
 
-const LIMITS = { n: [1, 500], cells: [1, 64], claims: [3, 10], canaries: [0, 6] } as const;
+const LIMITS = { n: [1, 500], cells: [1, 64], claims: [3, 10], canaries: [0, 6], simPace: [1, 40] } as const;
+// An offline demo should feel like a real run (~1.5-3 s per solve), not finish in five seconds.
+const DEMO_SIM_PACE = 10;
 export const IDEA_MAX = 500;
 const PUBLISH_WARNING = "会把通过验证门的 Gene 公开发布到 EvoMap";
 
@@ -35,6 +37,8 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
   const [cells, setCells] = useState("8");
   const [judge, setJudge] = useState<Judge>("mock");
   const [llm, setLlm] = useState<Llm>("mock");
+  const [simPace, setSimPace] = useState(String(DEMO_SIM_PACE));
+  const [reasoning, setReasoning] = useState<"off" | "low" | "default">("off");
   const [inherit, setInherit] = useState(true);
   const [evomapLookup, setEvomapLookup] = useState(false);
   const [evomapPublish, setEvomapPublish] = useState(false);
@@ -61,6 +65,8 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
   const research = source === "research";
   const ideaText = idea.trim();
   const swarm = SWARM_MODES.includes(mode);
+  // System 1 only runs in swarm-jev, so elsewhere only a mock System 2 makes the run simulated.
+  const simulating = llm === "mock" || (mode === "swarm-jev" && judge === "mock");
   const noNode = defaults?.evomapNode === false;
   const canStart = !running && !busy && (!research || ideaText.length > 0);
 
@@ -85,6 +91,8 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
       evomapLookup,
       evomapPublish: evomapPublish && !noNode,
       ...(research ? {} : { n: clampInt(n, LIMITS.n, fallback?.n ?? 40) }),
+      ...(simulating ? { simPace: clampInt(simPace, LIMITS.simPace, DEMO_SIM_PACE) } : {}),
+      ...(llm === "openrouter" ? { llmReasoning: reasoning } : {}),
       taskSource,
     };
     try {
@@ -177,6 +185,16 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
         <Field label="System 2" provider={{ name: "LLM", ok: defaults?.providers.llm, model: defaults?.llmModel }}>
           <Select value={llm} options={["openrouter", "mock"]} onChange={setLlm} disabled={running} />
         </Field>
+        {llm === "openrouter" && (
+          <Field label="思考 Reasoning" hint="真实大模型的推理强度：off = 直接作答（快、会出错），low = 简短推理 llmReasoning">
+            <Select value={reasoning} options={["off", "low", "default"]} onChange={(v) => setReasoning(v as "off" | "low" | "default")} disabled={running} />
+          </Field>
+        )}
+        {simulating && (
+          <Field label="模拟节奏 ×" hint="模拟调用的延迟倍数：1 = 快速模拟，10 ≈ 真实运行节奏 simPace">
+            <NumberInput value={simPace} onChange={setSimPace} limits={LIMITS.simPace} disabled={running} />
+          </Field>
+        )}
 
         <Button
           onClick={() => void start()}

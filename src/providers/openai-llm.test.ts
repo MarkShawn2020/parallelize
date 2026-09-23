@@ -85,6 +85,20 @@ describe("OpenAICompatLLM", () => {
     });
   });
 
+  it("turns reasoning off or low, raising max_tokens so a low-effort pass can reach the answer", async () => {
+    const s = await server(fixture);
+    const off = new OpenAICompatLLM({ baseUrl: s.baseUrl, apiKey: KEY, model: "deepseek/deepseek-v4.1-flash", retries: 0, reasoning: "off" });
+    await off.complete(req({ maxTokens: 600 }));
+    expect(JSON.parse(s.requests[0]?.body ?? "")).toMatchObject({ max_tokens: 600, reasoning: { enabled: false } });
+
+    const low = new OpenAICompatLLM({ baseUrl: s.baseUrl, apiKey: KEY, model: "deepseek/deepseek-v4.1-flash", retries: 0, reasoning: "low" });
+    await low.complete(req({ maxTokens: 600 }));
+    expect(JSON.parse(s.requests[1]?.body ?? "")).toMatchObject({ max_tokens: 1500, reasoning: { effort: "low" } });
+
+    await llm(s.baseUrl).complete(req());
+    expect(JSON.parse(s.requests[2]?.body ?? "")).not.toHaveProperty("reasoning");
+  });
+
   it("surfaces HTTP errors as ProviderError", async () => {
     const s = await server({ error: { message: "invalid model" } }, 400);
     const err = (await llm(s.baseUrl).complete(req()).catch((e: unknown) => e)) as ProviderError;

@@ -7,7 +7,8 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parseRunConfig } from "./config";
 import { SimpleEventBus } from "./core/events";
-import type { LibraryGene, RunSummary, SwarmEvent } from "./core/types";
+import { sleep } from "./core/rng";
+import type { LedgerEntry, LibraryGene, RunSummary, SwarmEvent } from "./core/types";
 import { validateMessage } from "./protocol/messages";
 import { FileExperienceLibrary } from "./protocol/library";
 import { EvoMapClient } from "./providers/evomap";
@@ -43,6 +44,17 @@ const ofType = <T extends SwarmEvent["type"]>(events: SwarmEvent[], type: T) =>
   events.filter((e): e is Extract<SwarmEvent, { type: T }> => e.type === type);
 
 const JUDGE_PURPOSES = ["claim", "verify", "adopt", "adjudicate"] as const;
+
+async function waitFor(check: () => boolean, timeoutMs = 10_000): Promise<void> {
+  const until = Date.now() + timeoutMs;
+  while (!check()) {
+    if (Date.now() > until) throw new Error("waitFor timed out");
+    await sleep(10);
+  }
+}
+
+// No latency override, so config.simPace sets the pace of every simulated call.
+const PACED: Extra = { mockLatencyMs: undefined };
 
 async function readJsonl(path: string): Promise<unknown[]> {
   return (await readFile(path, "utf8"))
@@ -185,6 +197,41 @@ describe("startRun", () => {
     expect(summary.metrics.s1Decisions).toBe(0);
     expect(summary.metrics.s2Decisions).toBeGreaterThan(0);
     expect(summary.byPurpose.verify?.calls ?? 0).toBeGreaterThan(0);
+  });
+
+  it("paces a simulated run with simPace: the same run takes several times longer at 10 than at 1", async () => {
+    const timed = async (simPace: number, extra: Extra) => {
+      const { summary } = await run({ mode: "single", n: 2, simPace }, extra);
+      expect(summary.aborted).toBeUndefined();
+      return { wallMs: summary.finishedAt - summary.startedAt, callMs: summary.byPurpose.single?.latencyMs ?? Number.NaN };
+    };
+    const fast = await timed(1, PACED);
+    const paced = await timed(10, PACED);
+    expect(paced.callMs / fast.callMs).toBeCloseTo(10, 0);
+    expect(paced.wallMs).toBeGreaterThan(3 * fast.wallMs);
+    // The test latency override still wins over any pace.
+    const overridden = await timed(40, {});
+    expect(overridden.callMs).toBeLessThanOrEqual(2);
+  });
+
+  it("keeps leases alive through paced calls longer than the lease and still reopens a killed cell's task", async () => {
+    // simPace 10 makes every solve 0.6-1.8 s, longer than this 0.5 s lease: only in-flight renewal keeps them.
+    const leaseMs = 500;
+    const { handle, events } = await launch({ mode: "swarm-rules", n: 8, cells: 2, simPace: 10, leaseMs }, PACED);
+    await waitFor(() => new Set(ofType(events, "task.claimed").map((e) => e.cellId)).size === 2);
+    const killed = handle.kill();
+    const heldTask = ofType(events, "task.claimed").filter((e) => e.cellId === killed).at(-1)?.taskId;
+    const survivor = handle.cellIds().find((id) => id !== killed);
+    await waitFor(() => ofType(events, "task.reopened").some((e) => e.taskId === heldTask));
+    await waitFor(() => ofType(events, "task.proposed").filter((e) => e.cellId === survivor).length >= 2);
+    handle.stop();
+    await handle.done;
+
+    expect(ofType(events, "task.reopened")).toEqual([expect.objectContaining({ taskId: heldTask, previousCell: killed })]);
+    const ledger = (await readJsonl(join(runsDir, handle.runId, "ledger.jsonl"))) as LedgerEntry[];
+    const survivorSolves = ledger.filter((e) => e.cellId === survivor && e.purpose === "solve");
+    expect(survivorSolves.length).toBeGreaterThanOrEqual(2);
+    expect(survivorSolves.every((e) => e.latencyMs > leaseMs)).toBe(true);
   });
 
   it("lets a new cell with another model join mid-run and catches a compromised cell", async () => {

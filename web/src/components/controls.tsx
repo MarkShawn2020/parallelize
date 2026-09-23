@@ -14,10 +14,10 @@ interface Provider {
   model: string | undefined;
 }
 
-export function Field({ label, provider, children }: { label: string; provider?: Provider; children: ReactNode }) {
+export function Field({ label, hint, provider, children }: { label: string; hint?: string; provider?: Provider; children: ReactNode }) {
   const title = provider
     ? `${provider.name} ${provider.ok === undefined ? "未知 unknown" : provider.ok ? "就绪 ready" : "无密钥 no key"}${provider.model ? ` · ${provider.model}` : ""}`
-    : undefined;
+    : hint;
   return (
     <label className="flex shrink-0 items-center gap-2" title={title}>
       {provider && (

@@ -391,6 +391,9 @@ export function SwarmGraph(props: Props) {
             warmupTicks={40}
             cooldownTicks={120}
             onEngineStop={() => fgRef.current?.zoomToFit(400, 56)}
+            // Wheel and drag-pan would hijack page scrolling on stage and shrink the swarm; auto-fit keeps it framed.
+            enableZoomInteraction={false}
+            enablePanInteraction={false}
             maxZoom={MAX_ZOOM}
             onRenderFramePre={drawEmergent}
             onRenderFramePost={drawPulses}

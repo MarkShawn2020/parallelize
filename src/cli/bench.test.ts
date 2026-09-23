@@ -66,6 +66,15 @@ describe("buildPlan", () => {
     expect(() => buildPlan({ difficulty: "hard", research: "x" })).toThrow(/synthetic tasks only/);
   });
 
+  it("passes --sim-pace (default 1) into every run config", () => {
+    const plan = buildPlan({ llm: "mock", judge: "mock", "sim-pace": "10" });
+    expect(plan).toHaveLength(BENCH_ORDER.length);
+    for (const r of plan) expect(r.config).toMatchObject({ simPace: 10, leaseMs: 4000 });
+    expect(buildPlan({ mode: "swarm-jev", llm: "mock" })[0]?.config).toMatchObject({ simPace: 1, leaseMs: 3000 });
+    expect(buildPlan({ mode: "single", "sim-pace": "99" })[0]?.config.simPace).toBe(40);
+    expect(() => buildPlan({ "sim-pace": "fast" })).toThrow(/--sim-pace must be a number/);
+  });
+
   it("lets the local CLI load a gsm8k file from any path", () => {
     const [run] = buildPlan({ mode: "single", source: "gsm8k", path: "test/fixtures/gsm8k-sample.jsonl" });
     expect(run?.config.taskSource).toEqual({ kind: "gsm8k", path: expect.stringMatching(/test\/fixtures\/gsm8k-sample\.jsonl$/) });

@@ -9,7 +9,15 @@ export interface OpenAICompatLLMOptions {
   timeoutMs?: number;
   retries?: number;
   limiter?: Semaphore;
+  /**
+   * OpenRouter's reasoning switch. "off" makes open-weight reasoning models answer directly (fast, error-prone);
+   * "low" keeps a short reasoning pass, which needs a larger max_tokens or the answer gets truncated.
+   */
+  reasoning?: "default" | "off" | "low";
 }
+
+/** Reasoning tokens count against max_tokens; below this a low-effort pass often never reaches the answer. */
+const LOW_REASONING_MIN_TOKENS = 1500;
 
 export class OpenAICompatLLM implements LLM {
   readonly id: string;
@@ -22,12 +30,15 @@ export class OpenAICompatLLM implements LLM {
   }
 
   async complete(req: LLMRequest): Promise<LLMResult> {
+    const reasoning = this.#opts.reasoning ?? "default";
+    const maxTokens = req.maxTokens ?? 1024;
     const body = {
       model: this.#opts.model,
       messages: req.messages,
-      max_tokens: req.maxTokens ?? 1024,
+      max_tokens: reasoning === "low" ? Math.max(maxTokens, LOW_REASONING_MIN_TOKENS) : maxTokens,
       temperature: req.temperature ?? 0,
       ...(req.json ? { response_format: { type: "json_object" } } : {}),
+      ...(reasoning === "off" ? { reasoning: { enabled: false } } : reasoning === "low" ? { reasoning: { effort: "low" } } : {}),
       usage: { include: true },
     };
     const call = async () => {
@@ -71,6 +82,7 @@ const LIST_PRICES: Record<string, [number, number]> = {
   "anthropic/claude-haiku-4.5": [1, 5],
   "deepseek/deepseek-v4.1-flash": [0.1, 0.5],
   "openai/gpt-6-luna": [0.1, 0.5],
+  "qwen/qwen3.8-flash": [0.15, 0.47],
 };
 
 /**

@@ -53,7 +53,7 @@ describe("server", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as DefaultsResponse;
     expect(Object.keys(body).sort()).toEqual(["defaults", "evomapNode", "jevModel", "llmModel", "models", "providers"]);
-    expect(body.models).toEqual(["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash", "openai/gpt-6-luna"]);
+    expect(body.models).toEqual(["deepseek/deepseek-v4.1-flash", "qwen/qwen3.8-flash"]);
     expect(body.evomapNode).toBe(false);
     expect(body.defaults.evomapPublish).toBe(false);
     expect(JSON.stringify(body)).not.toMatch(/apiKey|sk-/);

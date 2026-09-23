@@ -11,13 +11,15 @@ import { startRun } from "../run";
 /** swarm-jev first: its total tokens become single-vote's budget, so both spend the same. */
 export const BENCH_ORDER: readonly Mode[] = ["swarm-jev", "single", "single-vote", "subagent", "swarm-llm", "swarm-rules", "swarm-solo"];
 
-const USAGE = `usage: pnpm bench [--mode <mode[,mode...]|all>] [--n 64] [--cells 8] [--seed 7] [--judge jev|mock] [--llm openrouter|mock]
+const USAGE = `usage: pnpm bench [--mode <mode[,mode...]|all>] [--n 64] [--cells 8] [--seed 7] [--judge jev|mock] [--llm openrouter|mock] [--sim-pace 1]
                   [--source synthetic|gsm8k] [--difficulty normal|hard] [--path file.jsonl] [--max-cost 2] [--vote-budget <tokens>]
                   [--inherit] [--library-dir <dir>] [--evomap-lookup] [--cell-models a,b]
                   [--research "<idea>" [--claims 6] [--canaries 2]]
 modes: ${MODES.join(", ")}
 --inherit runs one swarm mode (default swarm-jev) twice: cold on --seed with an empty library, warm on --seed+1 inheriting it.
---difficulty hard (synthetic only): 6-9 step problems with distractor facts and unit conversions; run labels get a /hard suffix.`;
+--difficulty hard (synthetic only): 6-9 step problems with distractor facts and unit conversions; run labels get a /hard suffix.
+--sim-pace N (1-40) multiplies simulated provider latency; 10 paces a mock run like a real one.
+--reasoning off|low|default sets the real LLM reasoning pass (default off).`;
 
 const COLUMNS: Array<[string, number]> = [
   ["run", 20],
@@ -90,7 +92,9 @@ export function buildPlan(values: BenchArgs): BenchRun[] {
   if (difficultyArg !== undefined && (source !== "synthetic" || idea !== undefined)) throw new Error("--difficulty applies to synthetic tasks only");
   const difficulty: Difficulty = difficultyArg ?? "normal";
   // Normal labels stay as they were, so earlier compare files line up with new ones.
-  const suffix = difficulty === "hard" ? "/hard" : "";
+  const reasoningArg = text(values, "reasoning");
+  // Labels mark a non-default reasoning pass so a "thinking individual" reference row stands apart.
+  const suffix = (difficulty === "hard" ? "/hard" : "") + (reasoningArg === "low" ? "/think" : "");
   const models = text(values, "cell-models");
   const voteBudget = num(values, "vote-budget");
   const inherit = values.inherit === true;
@@ -104,6 +108,8 @@ export function buildPlan(values: BenchArgs): BenchRun[] {
       seed: seedOffset === 0 ? seed : (seed ?? DEFAULT_CONFIG.seed) + seedOffset,
       judge: text(values, "judge"),
       llm: text(values, "llm"),
+      simPace: num(values, "sim-pace"),
+      llmReasoning: text(values, "reasoning"),
       maxCostUsd: num(values, "max-cost"),
       voteBudgetTokens: voteBudget,
       inherit,
@@ -186,6 +192,8 @@ async function main(): Promise<number> {
       seed: { type: "string" },
       judge: { type: "string" },
       llm: { type: "string" },
+      "sim-pace": { type: "string" },
+      reasoning: { type: "string" },
       source: { type: "string" },
       difficulty: { type: "string" },
       path: { type: "string" },
@@ -221,7 +229,8 @@ async function main(): Promise<number> {
     const budget = config.mode === "single-vote" ? `, vote budget=${config.voteBudgetTokens || "fixed k"}` : "";
     const difficulty = difficultyOf(config);
     const level = difficulty === undefined ? "" : `, difficulty=${difficulty}`;
-    process.stderr.write(`running ${run.label} (n=${config.n}, cells=${config.cells}, seed=${config.seed}, llm=${config.llm}, judge=${config.judge}${level}${budget}) ... `);
+    const pace = config.simPace === 1 ? "" : `, sim-pace=${config.simPace}`;
+    process.stderr.write(`running ${run.label} (n=${config.n}, cells=${config.cells}, seed=${config.seed}, llm=${config.llm}, judge=${config.judge}${level}${pace}${budget}) ... `);
     const bus = new SimpleEventBus();
     bus.on((e) => {
       if (e.type === "research.report") reports[e.runId] = e.report;

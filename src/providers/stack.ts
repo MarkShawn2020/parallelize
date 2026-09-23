@@ -12,7 +12,7 @@ import { MemoryPrecedentStore } from "../judge/precedents";
 import { FaultSwitch, withFaultJudge, withFaultLLM } from "./faults";
 import { JevJudge } from "./jev";
 import { Semaphore } from "./limiter";
-import { MockJudge, MockLLM, MockOracle } from "./mock";
+import { MOCK_LLM_LATENCY_MS, MockJudge, MockLLM, MockOracle, mockJudgeLatencyMs } from "./mock";
 import { OpenAICompatLLM } from "./openai-llm";
 
 // Precedents are appended to every System-1 state, so they must stay short or System 1 stops being cheap.
@@ -23,7 +23,7 @@ export interface ProviderStackOptions {
   config: RunConfig;
   ledger: Ledger;
   meter: Omit<MeterOptions, "provider">;
-  /** Overrides the latency range of every simulated provider (tests use [0, 0]). */
+  /** Overrides the latency range of every simulated provider (tests use [0, 0]); wins over config.simPace. */
   mockLatencyMs?: [number, number];
   env?: { llm: ProviderEndpoint; jev: ProviderEndpoint };
 }
@@ -51,7 +51,7 @@ export class ProviderStack {
   private readonly config: RunConfig;
   private readonly ledger: Ledger;
   private readonly meter: Omit<MeterOptions, "provider">;
-  private readonly latency: { latencyMs?: [number, number] };
+  private readonly latencyOverride: [number, number] | undefined;
   private readonly env: { llm: ProviderEndpoint; jev: ProviderEndpoint };
   private readonly mockLLM: boolean;
   private readonly mockJudge: boolean;
@@ -65,7 +65,7 @@ export class ProviderStack {
     this.config = config;
     this.ledger = opts.ledger;
     this.meter = opts.meter;
-    this.latency = opts.mockLatencyMs ? { latencyMs: opts.mockLatencyMs } : {};
+    this.latencyOverride = opts.mockLatencyMs;
     this.env = opts.env ?? providerEnv();
     this.mockLLM = config.llm === "mock";
     this.mockJudge = config.judge === "mock";
@@ -102,7 +102,7 @@ export class ProviderStack {
   /** LLM for tasks outside the run (holdout gate); a simulated one needs those tasks in its oracle. */
   holdoutLLM(tasks: Task[]): LLM {
     if (!this.mockLLM) return this.llm();
-    return this.wrap(new MockLLM({ oracle: new MockOracle(tasks), seed: hashString(`${this.config.seed}|holdout`), ...this.latency }));
+    return this.wrap(new MockLLM({ oracle: new MockOracle(tasks), seed: hashString(`${this.config.seed}|holdout`), ...this.latency(MOCK_LLM_LATENCY_MS) }));
   }
 
   /** swarm-jev: Jev (System 1) escalating to System 2. swarm-llm: System 2 only. Other modes: no judge. */
@@ -113,7 +113,7 @@ export class ProviderStack {
         return new ObservedJudge(this.system2(), { onDecision: hooks.onDecision, fallback: conservativeAnswer });
       case "swarm-jev": {
         const rawS1: Judge = this.mockJudge
-          ? new MockJudge({ tier: "system1", seed: config.seed, oracle: this.oracle, ...this.latency })
+          ? new MockJudge({ tier: "system1", seed: config.seed, oracle: this.oracle, ...this.latency(mockJudgeLatencyMs("system1")) })
           : new JevJudge({
               baseUrl: this.env.jev.baseUrl,
               apiKey: requireKey(this.env.jev.apiKey, "JEV_API_KEY or OPENROUTER_API_KEY"),
@@ -139,7 +139,8 @@ export class ProviderStack {
   private system2(): Judge {
     if (!this.mockLLM) return new LLMJudge({ llm: this.llm() });
     // LLMJudge calls go through the metered LLM; only the simulated System 2 needs its own meter and fault switch.
-    const s2 = new MockJudge({ tier: "system2", seed: this.config.seed, oracle: this.oracle, ...this.latency });
+    // A real LLM judgment takes ~1.5-3 s, so the simulated System 2 stretches at most 2x or a paced demo crawls.
+    const s2 = new MockJudge({ tier: "system2", seed: this.config.seed, oracle: this.oracle, ...this.latency(mockJudgeLatencyMs("system2"), 2) });
     return meterJudge(withFaultJudge(s2, this.switches.llm), this.ledger, { ...this.meter, provider: "mock-judge" });
   }
 
@@ -147,14 +148,22 @@ export class ProviderStack {
     if (this.mockLLM) {
       // Each simulated model draws its own numbers; a shared seed would make "different models" err in lockstep.
       const seed = model === this.defaultModel ? this.config.seed : hashString(`${this.config.seed}|${model}`);
-      return new MockLLM({ oracle, seed, ...this.latency });
+      return new MockLLM({ oracle, seed, ...this.latency(MOCK_LLM_LATENCY_MS) });
     }
     return new OpenAICompatLLM({
       baseUrl: this.env.llm.baseUrl,
       apiKey: requireKey(this.env.llm.apiKey, "LLM_API_KEY or OPENROUTER_API_KEY"),
       model,
       limiter: this.limiter,
+      reasoning: this.config.llmReasoning,
     });
+  }
+
+  /** A simulated provider's latency: the test override if given, else its default range stretched by simPace. */
+  private latency([lo, hi]: readonly [number, number], maxPace = Infinity): { latencyMs: [number, number] } {
+    if (this.latencyOverride) return { latencyMs: this.latencyOverride };
+    const pace = Math.min(this.config.simPace, maxPace);
+    return { latencyMs: [Math.round(lo * pace), Math.round(hi * pace)] };
   }
 
   private wrap(raw: LLM): LLM {

@@ -73,6 +73,9 @@ export interface MockLLMOptions {
   accuracy?: Partial<Record<Domain, number>>;
 }
 
+/** Default MockLLM latency range; the provider stack stretches it by RunConfig.simPace. */
+export const MOCK_LLM_LATENCY_MS: readonly [number, number] = [60, 180];
+
 const DEFAULT_ACCURACY: Record<Domain, number> = { arithmetic: 0.93, rates: 0.85, logic: 0.8, gsm8k: 0.85, research: 0.9 };
 const STRATEGY_BONUS = 0.05;
 const TEAMMATE_COPY = 0.8;
@@ -134,7 +137,7 @@ export class MockLLM implements LLM {
   constructor(opts: MockLLMOptions) {
     this.#oracle = opts.oracle;
     this.#seed = opts.seed;
-    this.#latency = opts.latencyMs ?? [60, 180];
+    this.#latency = opts.latencyMs ?? [...MOCK_LLM_LATENCY_MS];
     this.#accuracy = { ...DEFAULT_ACCURACY, ...opts.accuracy };
   }
 
@@ -316,6 +319,9 @@ const TIER_PROFILE: Record<
   system1: { latency: [70, 300], inPerQuestion: 40, outPerQuestion: 0, cost: (inp) => inp * 0.042e-6 },
   system2: { latency: [600, 1500], inPerQuestion: 150, outPerQuestion: 60, cost: (inp, out) => inp * 1e-6 + out * 5e-6 },
 };
+
+/** Default MockJudge latency range for a tier; the provider stack stretches it by RunConfig.simPace. */
+export const mockJudgeLatencyMs = (tier: Tier): readonly [number, number] => TIER_PROFILE[tier].latency;
 
 export class MockJudge implements Judge {
   readonly id: string;
