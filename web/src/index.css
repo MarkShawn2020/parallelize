@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* static: canvas code reads these variables at runtime, so none may be tree-shaken. */
+@theme static {
+  --color-*: initial;
+  --color-bg: #030708;
+  --color-panel: #071013;
+  --color-panel-2: #0c181c;
+  --color-fg: #d3e5e1;
+  --color-muted: #5f7978;
+  --color-grid: #16282d;
+  --color-accent: #3dffa0;
+  --color-s1: #3ad4e8;
+  --color-s2: #ffb224;
+  --color-warn: #ffb224;
+  --color-danger: #ff3d5a;
+  --color-ok: #62e36f;
+  --color-verify: #8aa6ff;
+  --color-gene: #d68cff;
+
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", "SF Mono", ui-monospace, Menlo, Consolas, "PingFang SC",
+    "Noto Sans SC", monospace;
+  --font-display: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", "PingFang SC", "Noto Sans SC",
+    sans-serif;
+
+  --animate-echo: echo-flash 0.45s ease-in-out infinite alternate;
+
+  @keyframes echo-flash {
+    from {
+      background-color: color-mix(in oklab, var(--color-danger) 45%, transparent);
+    }
+    to {
+      background-color: color-mix(in oklab, var(--color-danger) 8%, transparent);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--color-grid) 45%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--color-grid) 45%, transparent) 1px, transparent 1px);
+    background-size: 48px 48px;
+    color: var(--color-fg);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-grid) transparent;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-accent) 30%, transparent);
+  }
+}

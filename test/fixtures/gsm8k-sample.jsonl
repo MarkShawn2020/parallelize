@@ -1,0 +1,6 @@
+{"question": "Nina has 3 boxes with 12 pencils in each box. She gives 7 pencils to her brother. How many pencils does she have left?", "answer": "The boxes hold 3 * 12 = <<3*12=36>>36 pencils.\nAfter giving some away she has 36 - 7 = <<36-7=29>>29 pencils.\n#### 29"}
+{"question": "A farmer sells 250 eggs a day for 5 days. How many eggs does he sell?", "answer": "He sells 250 * 5 = <<250*5=1250>>1250 eggs.\n#### 1,250"}
+{"question": "This line was cut off mid-write", "answer": "Half of
+{"question": "A tank loses 4 liters per hour. How many liters does it lose in half an hour?", "answer": "It loses 4 / 2 = <<4/2=2>>2 liters.\n#### 2"}
+{"question": "Omar walks 3 km on Monday and twice as far on Tuesday. How far does he walk on the two days together?", "answer": "On Tuesday he walks 3 * 2 = <<3*2=6>>6 km.\nTogether he walks 3 + 6 = <<3+6=9>>9 km.\n#### 9"}
+{"question": "A shirt costs $20 and is discounted by 15%. What is the new price in dollars?", "answer": "The discount is 20 * 0.15 = <<20*0.15=3>>3 dollars.\nThe new price is 20 - 3 = <<20-3=17>>17 dollars.\n#### 17"}
