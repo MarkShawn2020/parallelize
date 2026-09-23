@@ -117,11 +117,12 @@ EvoMap 节点文件默认在 `~/.config/parallelize/evomap-node.json`（`EVOMAP_
 
 ## 局限 / Limitations
 
-- Jev 是第三方模型：它在这些协调问题上的准确率与置信度校准未经独立验证。运行摘要里有按 verify 分箱的校准数据，校准守卫会在分歧过大时自动绕开它。
+- Jev 不是神器。2026-09-23 在 48 道真实困难题上实测（DeepSeek V4.1 Flash 关闭推理作答，答对 30/48）：Jev 对"这个答案要不要复核"的区分度 AUC 0.67，错答案的平均概率 0.52、对答案 0.40，而且把握 |2p-1| 通常很小，原先 0.5 的升级门槛会让 40/48 的判断升级。因此真实运行默认升级门槛 0.2、复核门槛 0.4（`src/config.ts`，可显式覆盖）：约四分之一的判断升级，一半答案送去复核，能抓住三分之二的错答案。运行摘要里有按 verify 分箱的校准数据，校准守卫会在某类判断与大模型分歧过大时自动绕开 Jev。
 - 同一个基础模型会犯相关错误：独立来源计数只能识别血缘上的依赖，两个用同一模型的 cell 可能独立地犯同一个错。`falseAcceptVerifiedRate` 专门量化这件事；用 `cellModels` 混用不同模型可以缓解，但不能消除。
 - `--llm mock` / `--judge mock` 是模拟：结果来自设定的准确率、延迟和计费公式，用于演示机制和回归测试，不能当作真实模型的评测。看板和汇总会标注 SIMULATION。模拟中 swarm-jev 的协调 token 仍以 adopt / verify 升级到 System 2 为主；规则认领把认领的 token 降到了零，但第二轮还没有用真实 Jev 重新测量。
-- 第一轮的真实测量（8 题 swarm-jev，升级率 0.65，协调 17.5k token 对工作 2.2k token，主要来自裁判认领）是第二轮改成规则认领的原因；改动后的真实数字需要重新跑 `pnpm bench` 得到。
+- 第一轮的真实测量（8 题 swarm-jev，升级率 0.65，协调 17.5k token 对工作 2.2k token，主要来自裁判认领）是第二轮改成规则认领的原因。
+- 模型与网络：默认做题模型是 `deepseek/deepseek-v4.1-flash`，因为部分 OpenRouter 账户被限制使用闭源模型（Anthropic、Google、OpenAI）；可用 `LLM_MODEL` 改成 `anthropic/claude-haiku-4.5`（与 EvoMap 实验同款）。Node 自带的 fetch 默认不读 `HTTPS_PROXY`，在需要代理的网络里直连会在并发时被重置、重试后单次调用拖到约 10 秒，所以所有脚本都以 `--use-env-proxy` 启动。OpenRouter 上开源模型的供应商负载波动很大，同一组请求的中位延迟可以在 1.4 秒和 14 秒之间变化。
 - 默认题目是合成的算术、速率、逻辑题（带种子、可复现），比真实基准简单；gsm8k 需要自备 `data/` 下的 jsonl 文件。
 - 想法验证场景里的裁决来自模型自身知识，不是联网检索；金丝雀只检验这种知识判断是否可靠。bench 对每种模式分别调用一次规划器（温度 0），论断通常一致但不保证完全相同。
-- EvoMap 发布链路已用本地模拟 hub 测试；真实 hub 上的 `/a2a/validate` 与 `/a2a/publish` 响应格式没有公开文档，首次发布前请先运行 `pnpm evomap node` 和 `pnpm evomap validate-sample`。
+- EvoMap 发布：捆绑包格式已在真实 hub 上通过 `/a2a/validate`（`valid: true`、`dry_run: true`、无警告）。hub 要求 Capsule 的 `blast_radius` 文件数和行数都大于 0、`validation` 必须是不含管道符的 node/npm/npx 命令；这里如实把"采用这条 Gene"表述为"往策略库新增 1 个策略文件"，验证命令复核记录下来的留出集 A/B 数字是否达到发布门槛，内容字段里写明它不重跑实验。首次使用先运行 `pnpm evomap node` 和 `pnpm evomap validate-sample`。
 - 面向外部 Agent 的 WebSocket 协议绑定已设计（见 PROTOCOL.md），尚未实现；当前所有 Agent 都在进程内。
