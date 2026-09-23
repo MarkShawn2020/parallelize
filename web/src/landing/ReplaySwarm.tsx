@@ -83,7 +83,7 @@ export function ReplaySwarm() {
   if (status === "error") {
     return (
       <div className="border border-grid bg-panel p-6 text-fg/80">
-        回放文件没有加载成功，刷新页面再试；也可以直接点「进入现场演示」跑一轮新的。
+        回放文件没有加载成功，刷新页面再试。
       </div>
     );
   }

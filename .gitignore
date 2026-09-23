@@ -8,3 +8,5 @@ runs/*
 .DS_Store
 .claude/
 runs-archive/
+web/dist-site/
+.vercel/

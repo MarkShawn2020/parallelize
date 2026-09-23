@@ -54,7 +54,7 @@ export function ParadigmExplorer() {
             </button>
           </li>
         ))}
-        <li className="px-1 pt-2 text-sm leading-relaxed text-muted">第 8 讲容错与安全、第 9 讲经验与生态在现场演示和下方回放里看。</li>
+        <li className="px-1 pt-2 text-sm leading-relaxed text-muted">第 8 讲容错与安全、第 9 讲经验与生态，在首页的蜂群回放和现场演示里看。</li>
       </ol>
 
       <div className="flex flex-col gap-6 border border-grid bg-panel p-6">

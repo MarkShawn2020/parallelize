@@ -21,11 +21,13 @@
     "smoke:live": "tsx --env-file-if-exists=.env src/cli/smoke.ts",
     "build": "vite build",
     "build:site": "VITE_STATIC_SITE=1 vite build --outDir dist-site --emptyOutDir",
+    "deploy:site": "VITE_STATIC_SITE=1 vite build --outDir dist-site --emptyOutDir && vercel deploy web/dist-site --prod --yes --scope lovstudio --project jis",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "evomap": "tsx --env-file-if-exists=.env src/cli/evomap.ts"
   },
   "dependencies": {
+    "mermaid": "^12.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-force-graph-2d": "^1.29.1",
