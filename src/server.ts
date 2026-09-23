@@ -5,15 +5,29 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocket, WebSocketServer } from "ws";
-import { DEFAULT_CONFIG, parseRunConfig, PROJECT_ROOT, providerEnv, RUNS_DIR } from "./config";
+import { DEFAULT_CONFIG, parseRunConfig, PROJECT_ROOT, providerEnv, RUNS_DIR, SPAWN_MODELS } from "./config";
 import { WS_PATH } from "./core/api";
-import type { ApiError, DefaultsResponse, EchoResponse, KillResponse, ListRunsResponse, StartRunResponse } from "./core/api";
+import type {
+  ApiError,
+  CompromiseResponse,
+  DefaultsResponse,
+  EchoResponse,
+  KillResponse,
+  LibraryResponse,
+  ListRunsResponse,
+  SpawnResponse,
+  StartRunResponse,
+} from "./core/api";
 import { SimpleEventBus } from "./core/events";
 import type { EventBus, RunConfig, RunSummary, SwarmEvent } from "./core/types";
+import { FileExperienceLibrary } from "./protocol/library";
+import { EvoMapClient } from "./providers/evomap";
 import { startRun } from "./run";
 import type { RunHandle, StartRunOptions } from "./run";
 
 const MAX_BODY_BYTES = 64 * 1024;
+const MAX_ECHO_CELLS = 3;
+const RECENT_GENES = 20;
 const STATIC_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -43,7 +57,11 @@ export interface AppServerOptions {
   /** Serve the built dashboard from this directory (production). */
   staticDir?: string;
   bus?: EventBus;
-  runOptions?: Omit<StartRunOptions, "bus" | "runsDir">;
+  /** Experience library directory; default `<runsDir>/library` (the same one runs use). */
+  libraryDir?: string;
+  /** Tests inject a client with a temporary node file; runs share it for lookup and publishing. */
+  evomap?: EvoMapClient;
+  runOptions?: Omit<StartRunOptions, "bus" | "runsDir" | "libraryDir" | "evomap">;
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -76,12 +94,41 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   }
 }
 
-function optionalString(body: unknown, key: string): string | undefined {
+function record(body: unknown): Record<string, unknown> {
   if (!isRecord(body)) throw new HttpError(400, "request body must be a JSON object");
-  const v = body[key];
+  return body;
+}
+
+function optionalString(body: unknown, key: string): string | undefined {
+  const v = record(body)[key];
   if (v === undefined) return undefined;
   if (typeof v !== "string" || v.length === 0 || v.length > 64) throw new HttpError(400, `${key} must be a non-empty string`);
   return v;
+}
+
+function spawnModel(body: unknown): string | undefined {
+  const model = optionalString(body, "model");
+  if (model !== undefined && !SPAWN_MODELS.some((m) => m === model)) throw new HttpError(400, `model must be one of ${SPAWN_MODELS.join(", ")}`);
+  return model;
+}
+
+function faultRequest(body: unknown): { provider: "jev" | "llm"; down: boolean } {
+  const { provider, down } = record(body);
+  if (provider !== "jev" && provider !== "llm") throw new HttpError(400, "provider must be jev or llm");
+  if (typeof down !== "boolean") throw new HttpError(400, "down must be true or false");
+  return { provider, down };
+}
+
+function echoCells(body: unknown, known: readonly string[]): string[] {
+  const v = record(body).cellIds;
+  if (v === undefined) return [];
+  if (!Array.isArray(v) || v.length > MAX_ECHO_CELLS) throw new HttpError(400, `cellIds must be an array of at most ${MAX_ECHO_CELLS} cell ids`);
+  const ids = v.map((id) => {
+    if (typeof id !== "string" || !known.includes(id)) throw new HttpError(400, `unknown cell ${typeof id === "string" ? id.slice(0, 64) : String(id)}`);
+    return id;
+  });
+  if (new Set(ids).size !== ids.length) throw new HttpError(400, "cellIds must not repeat");
+  return ids;
 }
 
 function isSummary(v: unknown): v is RunSummary {
@@ -136,6 +183,8 @@ export interface AppServer {
 export function createAppServer(opts: AppServerOptions): AppServer {
   const bus = opts.bus ?? new SimpleEventBus();
   const staticDir = opts.staticDir === undefined ? undefined : resolve(opts.staticDir);
+  const libraryDir = opts.libraryDir ?? join(opts.runsDir, "library");
+  const evomap = opts.evomap ?? new EvoMapClient();
   let active: RunHandle | null = null;
   let starting = false;
   let replay: string[] = [];
@@ -162,7 +211,7 @@ export function createAppServer(opts: AppServerOptions): AppServer {
     }
     starting = true;
     try {
-      const handle = await startRun(config, { ...opts.runOptions, bus, runsDir: opts.runsDir });
+      const handle = await startRun(config, { ...opts.runOptions, bus, runsDir: opts.runsDir, libraryDir, evomap });
       active = handle;
       void handle.done.then(() => {
         if (active === handle) active = null;
@@ -192,8 +241,26 @@ export function createAppServer(opts: AppServerOptions): AppServer {
         providers: { jev: Boolean(env.jev.apiKey), llm: Boolean(env.llm.apiKey) },
         llmModel: env.llm.model,
         jevModel: env.jev.model,
+        models: [...SPAWN_MODELS],
+        // Only whether a node exists: its secret and claim URL stay on this machine.
+        evomapNode: (await evomap.node()) !== undefined,
       };
       return sendJson(res, 200, body);
+    }
+    if (path === "/api/library" && method === "GET") {
+      const library = new FileExperienceLibrary(libraryDir);
+      const counts = await library.load();
+      const recent = library
+        .genes()
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, RECENT_GENES);
+      return sendJson(res, 200, { ...counts, recent } satisfies LibraryResponse);
+    }
+    if (path === "/api/library/reset" && method === "POST") {
+      await readJson(req);
+      if (active || starting) throw new HttpError(409, "cannot reset the experience library while a run is active");
+      await new FileExperienceLibrary(libraryDir).reset();
+      return sendJson(res, 200, { ok: true });
     }
     if (path === "/api/runs" && method === "GET") {
       const body: ListRunsResponse = { runs: await listSummaries(opts.runsDir), activeRunId: active?.runId ?? null };
@@ -202,7 +269,7 @@ export function createAppServer(opts: AppServerOptions): AppServer {
     if (path === "/api/runs" && method === "POST") {
       return sendJson(res, 201, await launch(await readJson(req)));
     }
-    const action = /^\/api\/runs\/([^/]+)\/(kill|echo|stop)$/.exec(path);
+    const action = /^\/api\/runs\/([^/]+)\/(kill|echo|stop|spawn|compromise|fault)$/.exec(path);
     if (action && method === "POST") {
       const runId = decodeURIComponent(action[1] ?? "");
       const body = await readJson(req);
@@ -211,8 +278,19 @@ export function createAppServer(opts: AppServerOptions): AppServer {
         switch (action[2]) {
           case "kill":
             return sendJson(res, 200, { cellId: run.kill(optionalString(body, "cellId")) } satisfies KillResponse);
-          case "echo":
-            return sendJson(res, 200, { taskId: run.injectEcho(optionalString(body, "taskId")) } satisfies EchoResponse);
+          case "echo": {
+            const taskId = optionalString(body, "taskId");
+            return sendJson(res, 200, { taskId: run.injectEcho(taskId, echoCells(body, run.cellIds())) } satisfies EchoResponse);
+          }
+          case "spawn":
+            return sendJson(res, 200, run.spawn(spawnModel(body)) satisfies SpawnResponse);
+          case "compromise":
+            return sendJson(res, 200, { cellId: run.compromise(optionalString(body, "cellId")) } satisfies CompromiseResponse);
+          case "fault": {
+            const { provider, down } = faultRequest(body);
+            run.setFault(provider, down);
+            return sendJson(res, 200, { ok: true });
+          }
           default:
             run.stop();
             return sendJson(res, 200, { ok: true });
@@ -222,7 +300,8 @@ export function createAppServer(opts: AppServerOptions): AppServer {
         throw new HttpError(409, errorMessage(err));
       }
     }
-    if (path.startsWith("/api/")) throw new HttpError(path === "/api/runs" || action ? 405 : 404, "no such endpoint");
+    const known = path === "/api/runs" || path === "/api/library" || path === "/api/library/reset" || path === "/api/config/defaults";
+    if (path.startsWith("/api/")) throw new HttpError(known || action ? 405 : 404, "no such endpoint");
     if (staticDir && (method === "GET" || method === "HEAD")) return serveStatic(res, staticDir, path);
     throw new HttpError(404, "not found");
   }

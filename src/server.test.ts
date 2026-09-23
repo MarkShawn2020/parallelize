@@ -5,8 +5,10 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import { sleep } from "./core/rng";
-import type { ListRunsResponse } from "./core/api";
-import type { SwarmEvent } from "./core/types";
+import type { DefaultsResponse, LibraryResponse, ListRunsResponse } from "./core/api";
+import type { LibraryGene, SwarmEvent } from "./core/types";
+import { FileExperienceLibrary } from "./protocol/library";
+import { EvoMapClient } from "./providers/evomap";
 import { createAppServer } from "./server";
 import type { AppServer } from "./server";
 
@@ -21,7 +23,9 @@ beforeAll(async () => {
   await writeFile(join(staticDir, "index.html"), "<!doctype html><title>t</title>");
   await writeFile(join(staticDir, "assets", "app.js"), "console.log(1)");
   await writeFile(join(dir, "secret.txt"), "nope");
-  app = createAppServer({ runsDir: join(dir, "runs"), staticDir, runOptions: { mockLatencyMs: [5, 10] } });
+  // A node file that does not exist yet: the server must never read the operator's real EvoMap credentials in tests.
+  const evomap = new EvoMapClient({ baseUrl: "http://127.0.0.1:9", nodeFile: join(dir, "evomap", "node.json") });
+  app = createAppServer({ runsDir: join(dir, "runs"), staticDir, evomap, runOptions: { mockLatencyMs: [5, 10] } });
   await new Promise<void>((resolve) => app.server.listen(0, "127.0.0.1", resolve));
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 });
@@ -44,12 +48,52 @@ async function waitForIdle(): Promise<ListRunsResponse> {
 }
 
 describe("server", () => {
-  it("serves defaults and provider readiness without keys", async () => {
+  it("serves defaults, spawnable models and EvoMap node presence without keys or claim URLs", async () => {
     const res = await fetch(`${base}/api/config/defaults`);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as Record<string, unknown>;
-    expect(Object.keys(body).sort()).toEqual(["defaults", "jevModel", "llmModel", "providers"]);
+    const body = (await res.json()) as DefaultsResponse;
+    expect(Object.keys(body).sort()).toEqual(["defaults", "evomapNode", "jevModel", "llmModel", "models", "providers"]);
+    expect(body.models).toEqual(["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash", "openai/gpt-6-luna"]);
+    expect(body.evomapNode).toBe(false);
+    expect(body.defaults.evomapPublish).toBe(false);
     expect(JSON.stringify(body)).not.toMatch(/apiKey|sk-/);
+
+    await mkdir(join(dir, "evomap"), { recursive: true });
+    const secret = "c".repeat(64);
+    await writeFile(join(dir, "evomap", "node.json"), JSON.stringify({ node_id: "node_abcd1234", node_secret: secret, claim_url: "https://evomap.ai/claim/xyz" }));
+    const withNode = await (await fetch(`${base}/api/config/defaults`)).text();
+    expect((JSON.parse(withNode) as DefaultsResponse).evomapNode).toBe(true);
+    expect(withNode).not.toContain(secret);
+    expect(withNode).not.toContain("evomap.ai/claim");
+  });
+
+  it("lists the experience library, newest genes first, and resets it", async () => {
+    const empty = (await (await fetch(`${base}/api/library`)).json()) as LibraryResponse;
+    expect(empty).toEqual({ genes: 0, precedents: 0, recent: [] });
+    const gene = (id: string, createdAt: number): LibraryGene => ({
+      id,
+      kind: "solve",
+      domain: "rates",
+      text: `strategy ${id}`,
+      origin: "c01",
+      lineageId: id,
+      wins: 1,
+      trials: 2,
+      createdAt,
+      source: "local",
+      evidence: { wins: 1, trials: 2 },
+    });
+    const genes = Array.from({ length: 22 }, (_, i) => gene(`g${i}`, 100 + i));
+    await new FileExperienceLibrary(join(dir, "runs", "library")).publish(genes, [{ key: "verify", state: "s", verdict: { type: "noul", noul: 0.2 }, at: 5 }]);
+    const full = (await (await fetch(`${base}/api/library`)).json()) as LibraryResponse;
+    expect(full.genes).toBe(22);
+    expect(full.precedents).toBe(1);
+    expect(full.recent).toHaveLength(20);
+    expect(full.recent[0]?.id).toBe("g21");
+    expect((await post("/api/library/reset", {}, "text/plain")).status).toBe(415);
+    expect((await post("/api/library/reset", {})).status).toBe(200);
+    expect(((await (await fetch(`${base}/api/library`)).json()) as LibraryResponse).genes).toBe(0);
+    expect((await fetch(`${base}/api/library/reset`)).status).toBe(405);
   });
 
   it("validates run requests at the boundary", async () => {
@@ -82,11 +126,28 @@ describe("server", () => {
     const echo = await post(`/api/runs/${runId}/echo`, {});
     expect(echo.status).toBe(200);
     expect(((await echo.json()) as { taskId: string }).taskId).toMatch(/^t\d+$/);
+    expect((await post(`/api/runs/${runId}/echo`, { cellIds: ["c09"] })).status).toBe(400);
+    expect((await post(`/api/runs/${runId}/echo`, { cellIds: ["c01", "c03", "c01"] })).status).toBe(400);
+    expect((await post(`/api/runs/${runId}/echo`, { cellIds: "c01" })).status).toBe(400);
+    expect((await post(`/api/runs/${runId}/echo`, { cellIds: ["c01", "c03"] })).status).toBe(200);
+
+    expect((await post(`/api/runs/${runId}/spawn`, { model: "evil/model" })).status).toBe(400);
+    const spawned = await post(`/api/runs/${runId}/spawn`, { model: "deepseek/deepseek-v4.1-flash" });
+    expect(await spawned.json()).toEqual({ cellId: "c04", model: "deepseek/deepseek-v4.1-flash" });
+    const compromised = await post(`/api/runs/${runId}/compromise`, { cellId: "c01" });
+    expect(await compromised.json()).toEqual({ cellId: "c01" });
+    expect((await post(`/api/runs/${runId}/compromise`, { cellId: "c02" })).status).toBe(409);
+    expect((await post(`/api/runs/${runId}/fault`, { provider: "gpu", down: true })).status).toBe(400);
+    expect((await post(`/api/runs/${runId}/fault`, { provider: "jev", down: "yes" })).status).toBe(400);
+    expect(await (await post(`/api/runs/${runId}/fault`, { provider: "jev", down: true })).json()).toEqual({ ok: true });
+    expect((await post("/api/library/reset", {})).status).toBe(409);
     expect((await post(`/api/runs/${runId}/stop`, {})).status).toBe(200);
     const list = await waitForIdle();
     expect(list.runs[0]).toMatchObject({ runId, aborted: "stopped" });
     expect(live.some((e) => e.type === "run.started" && e.runId === runId)).toBe(true);
     expect(live.some((e) => e.type === "run.finished" && e.runId === runId)).toBe(true);
+    expect(live.some((e) => e.type === "provider.fault" && e.provider === "jev" && e.down)).toBe(true);
+    expect(live.some((e) => e.type === "cell.compromised" && e.cellId === "c01")).toBe(true);
     ws.close();
 
     const replayed: SwarmEvent[] = [];

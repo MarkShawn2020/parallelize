@@ -1,7 +1,7 @@
 import { mulberry32 } from "../core/rng";
 import type { Domain, Task, TaskSource } from "../core/types";
 
-export type SyntheticDomain = Exclude<Domain, "gsm8k">;
+export type SyntheticDomain = Exclude<Domain, "gsm8k" | "research">;
 export const SYNTHETIC_DOMAINS: readonly SyntheticDomain[] = ["arithmetic", "rates", "logic"];
 
 export interface Rng {

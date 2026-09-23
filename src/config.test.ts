@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG, parseRunConfig, providerEnv } from "./config";
+import { DEFAULT_CONFIG, parseRunConfig, providerEnv, SPAWN_MODELS } from "./config";
 
 describe("parseRunConfig", () => {
   it("merges a minimal request over the defaults", () => {
@@ -55,6 +55,87 @@ describe("parseRunConfig", () => {
     expect(parseRunConfig({ mode: "swarm-jev", llm: "mock" }).leaseMs).toBe(3000);
     expect(parseRunConfig({ mode: "swarm-jev", llm: "mock", leaseMs: 9000 }).leaseMs).toBe(9000);
     expect(parseRunConfig({ mode: "swarm-jev" }).leaseMs).toBe(30_000);
+  });
+
+  it("ships round-2 defaults: rule claims, review, quarantine, guard and everything external off", () => {
+    expect(DEFAULT_CONFIG).toMatchObject({
+      claimPolicy: "rule",
+      auditRate: 0.1,
+      probation: 2,
+      reviewTrust: 0.55,
+      quarantineTrust: 0.35,
+      stuckAfter: 2,
+      guardWindow: 8,
+      guardMaxDisagreement: 0.5,
+      inherit: false,
+      evomapLookup: false,
+      evomapPublish: false,
+      publishGateTasks: 8,
+      publishGateMinDelta: 1,
+      cellModels: [],
+      voteBudgetTokens: 0,
+    });
+  });
+
+  it("clamps the round-2 numbers and checks booleans and the claim policy", () => {
+    const cfg = parseRunConfig({
+      mode: "swarm-jev",
+      auditRate: 2,
+      probation: -3,
+      reviewTrust: 1.5,
+      quarantineTrust: -1,
+      stuckAfter: 0,
+      guardWindow: 1,
+      guardMaxDisagreement: 7,
+      publishGateTasks: 1000,
+      publishGateMinDelta: 0,
+      voteBudgetTokens: -5,
+      inherit: true,
+      evomapLookup: true,
+      evomapPublish: false,
+      claimPolicy: "judge",
+    });
+    expect(cfg).toMatchObject({
+      auditRate: 1,
+      probation: 0,
+      reviewTrust: 1,
+      quarantineTrust: 0,
+      stuckAfter: 1,
+      guardWindow: 2,
+      guardMaxDisagreement: 1,
+      publishGateTasks: 64,
+      publishGateMinDelta: 1,
+      voteBudgetTokens: 0,
+      inherit: true,
+      evomapLookup: true,
+      evomapPublish: false,
+      claimPolicy: "judge",
+    });
+    expect(() => parseRunConfig({ mode: "single", inherit: "yes" })).toThrow(/inherit must be true or false/);
+    expect(() => parseRunConfig({ mode: "single", evomapPublish: 1 })).toThrow(/evomapPublish/);
+    expect(() => parseRunConfig({ mode: "single", claimPolicy: "llm" })).toThrow(/claimPolicy must be one of/);
+  });
+
+  it("accepts up to 8 model ids per cell and rejects anything else", () => {
+    expect(parseRunConfig({ mode: "swarm-rules", cellModels: [...SPAWN_MODELS] }).cellModels).toEqual([...SPAWN_MODELS]);
+    expect(parseRunConfig({ mode: "swarm-rules", cellModels: [] }).cellModels).toEqual([]);
+    for (const bad of ["x", ["ok/model", ""], ["has space"], ["a;rm"], ["m".repeat(81)], Array(9).fill("a/b"), [42]]) {
+      expect(() => parseRunConfig({ mode: "swarm-rules", cellModels: bad })).toThrow(/cellModels/);
+    }
+    // The defaults must not share one mutable array between runs.
+    expect(parseRunConfig({ mode: "single" }).cellModels).not.toBe(DEFAULT_CONFIG.cellModels);
+  });
+
+  it("validates research ideas and sizes the run from claims plus canaries", () => {
+    const cfg = parseRunConfig({ mode: "swarm-jev", n: 99, taskSource: { kind: "research", idea: "  用 AI 帮猫咖排班  ", claims: 20, canaries: -1 } });
+    expect(cfg.taskSource).toEqual({ kind: "research", idea: "用 AI 帮猫咖排班", claims: 10, canaries: 0 });
+    expect(cfg.n).toBe(10);
+    expect(parseRunConfig({ mode: "single", taskSource: { kind: "research", idea: "x" } }).taskSource).toEqual({ kind: "research", idea: "x", claims: 6, canaries: 2 });
+    expect(parseRunConfig({ mode: "single", taskSource: { kind: "research", idea: "x", claims: 1, canaries: 9 } }).taskSource).toMatchObject({ claims: 3, canaries: 6 });
+    expect(() => parseRunConfig({ mode: "single", taskSource: { kind: "research", idea: "  " } })).toThrow(/taskSource.idea/);
+    expect(() => parseRunConfig({ mode: "single", taskSource: { kind: "research", idea: "字".repeat(501) } })).toThrow(/at most 500/);
+    expect(parseRunConfig({ mode: "single", taskSource: { kind: "research", idea: "字".repeat(500) } }).taskSource.kind).toBe("research");
+    expect(() => parseRunConfig({ mode: "single", taskSource: { kind: "research", idea: "x", claims: "5" } })).toThrow(/claims/);
   });
 
   it("keeps gsm8k paths inside data/", () => {

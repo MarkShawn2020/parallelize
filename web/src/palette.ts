@@ -1,4 +1,5 @@
 import type { CellState } from "../../src/core/types";
+import type { LinkReason, ParticleKind } from "./state";
 
 const TOKENS = [
   "bg",
@@ -39,6 +40,17 @@ export const CELL_STATE_COLOR: Record<CellState, ColorToken> = {
   verifying: "verify",
   gossiping: "gene",
   dead: "danger",
+};
+
+export const LINK_COLOR: Record<LinkReason, ColorToken> = {
+  gossip: "gene",
+  review: "verify",
+  discover: "s1",
+};
+
+export const PARTICLE_COLOR: Record<ParticleKind, ColorToken> = {
+  gene: "gene",
+  review: "verify",
 };
 
 let cachedFont = "";

@@ -7,6 +7,9 @@ export const PROJECT_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)
 export const DATA_DIR = resolve(PROJECT_ROOT, "data");
 export const RUNS_DIR = resolve(PROJECT_ROOT, "runs");
 
+/** Models a runtime-spawned cell may use (all served by OpenRouter). */
+export const SPAWN_MODELS = ["anthropic/claude-haiku-4.5", "deepseek/deepseek-v4.1-flash", "openai/gpt-6-luna"] as const;
+
 export const DEFAULT_CONFIG: RunConfig = {
   mode: "swarm-jev",
   n: 64,
@@ -26,16 +29,48 @@ export const DEFAULT_CONFIG: RunConfig = {
   geneCapacity: 4,
   gossipEvery: 2,
   claimCandidates: 6,
+  claimPolicy: "rule",
+  auditRate: 0.1,
+  probation: 2,
+  reviewTrust: 0.55,
+  // With BetaTrust's 2:1 prior, three straight misses (trust 2/6) cross this line; two (2/5) do not.
+  quarantineTrust: 0.35,
+  stuckAfter: 2,
+  guardWindow: 8,
+  guardMaxDisagreement: 0.5,
+  inherit: false,
+  evomapLookup: false,
+  evomapPublish: false,
+  publishGateTasks: 8,
+  publishGateMinDelta: 1,
+  cellModels: [],
+  voteBudgetTokens: 0,
 };
 
 // Simulated calls take ~0.1-1.5s, so a short lease makes fault recovery visible within seconds.
 const MOCK_LEASE_MS = 3000;
+const MAX_CELL_MODELS = 8;
+const MAX_MODEL_CHARS = 80;
+const MODEL_ID = /^[a-z0-9._~/:-]+$/i;
+const MAX_IDEA_CHARS = 500;
+const CLAIMS = { min: 3, max: 10 };
+const CANARIES = { min: 0, max: 6 };
 
 type NumericKey = {
   [K in keyof RunConfig]: RunConfig[K] extends number ? K : never;
 }[keyof RunConfig];
 
-const NUMERIC: Record<NumericKey, { min: number; max: number; integer: boolean }> = {
+type BooleanKey = {
+  [K in keyof RunConfig]: RunConfig[K] extends boolean ? K : never;
+}[keyof RunConfig];
+
+interface Range {
+  min: number;
+  max: number;
+  integer: boolean;
+}
+
+const NUMERIC: Record<NumericKey, Range> = {
   n: { min: 1, max: 512, integer: true },
   cells: { min: 1, max: 64, integer: true },
   seed: { min: 0, max: 2 ** 32 - 1, integer: true },
@@ -49,7 +84,20 @@ const NUMERIC: Record<NumericKey, { min: number; max: number; integer: boolean }
   geneCapacity: { min: 1, max: 32, integer: true },
   gossipEvery: { min: 1, max: 100, integer: true },
   claimCandidates: { min: 1, max: 255, integer: true },
+  auditRate: { min: 0, max: 1, integer: false },
+  probation: { min: 0, max: 50, integer: true },
+  reviewTrust: { min: 0, max: 1, integer: false },
+  quarantineTrust: { min: 0, max: 1, integer: false },
+  stuckAfter: { min: 1, max: 20, integer: true },
+  guardWindow: { min: 2, max: 200, integer: true },
+  guardMaxDisagreement: { min: 0, max: 1, integer: false },
+  publishGateTasks: { min: 2, max: 64, integer: true },
+  // A gene that does no better than no gene is never published.
+  publishGateMinDelta: { min: 1, max: 64, integer: true },
+  voteBudgetTokens: { min: 0, max: 50_000_000, integer: true },
 };
+
+const BOOLEAN: readonly BooleanKey[] = ["inherit", "evomapLookup", "evomapPublish"];
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -59,9 +107,8 @@ function oneOf<T extends string>(field: string, value: unknown, allowed: readonl
   return hit;
 }
 
-function numeric(field: NumericKey, value: unknown): number {
+function clampNumber(field: string, value: unknown, { min, max, integer }: Range): number {
   if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${field} must be a finite number`);
-  const { min, max, integer } = NUMERIC[field];
   const clamped = Math.min(max, Math.max(min, value));
   return integer ? Math.round(clamped) : clamped;
 }
@@ -78,25 +125,57 @@ export function dataPath(raw: unknown): string {
   return rel;
 }
 
+function researchSource(raw: Record<string, unknown>): TaskSourceConfig {
+  if (typeof raw.idea !== "string" || raw.idea.trim() === "") throw new Error("taskSource.idea must be a non-empty string");
+  const idea = raw.idea.trim();
+  if ([...idea].length > MAX_IDEA_CHARS) throw new Error(`taskSource.idea must be at most ${MAX_IDEA_CHARS} characters`);
+  const claims = raw.claims === undefined ? 6 : clampNumber("taskSource.claims", raw.claims, { ...CLAIMS, integer: true });
+  const canaries = raw.canaries === undefined ? 2 : clampNumber("taskSource.canaries", raw.canaries, { ...CANARIES, integer: true });
+  return { kind: "research", idea, claims, canaries };
+}
+
 function taskSource(raw: unknown): TaskSourceConfig {
   if (!isRecord(raw)) throw new Error("taskSource must be an object");
-  const kind = oneOf("taskSource.kind", raw.kind, ["synthetic", "gsm8k"] as const);
-  return kind === "synthetic" ? { kind } : { kind, path: dataPath(raw.path) };
+  const kind = oneOf("taskSource.kind", raw.kind, ["synthetic", "gsm8k", "research"] as const);
+  if (kind === "synthetic") return { kind };
+  if (kind === "gsm8k") return { kind, path: dataPath(raw.path) };
+  return researchSource(raw);
+}
+
+function cellModels(raw: unknown): string[] {
+  if (!Array.isArray(raw)) throw new Error("cellModels must be an array of model ids");
+  if (raw.length > MAX_CELL_MODELS) throw new Error(`cellModels allows at most ${MAX_CELL_MODELS} models`);
+  return raw.map((m) => {
+    if (typeof m !== "string" || m.length === 0 || m.length > MAX_MODEL_CHARS || !MODEL_ID.test(m)) {
+      throw new Error(`cellModels entries must be model ids like "vendor/model" (at most ${MAX_MODEL_CHARS} chars)`);
+    }
+    return m;
+  });
 }
 
 /** Boundary validation for POST /api/runs: StartRunRequest merged over DEFAULT_CONFIG. */
 export function parseRunConfig(body: unknown): RunConfig {
   if (!isRecord(body)) throw new Error("request body must be a JSON object");
   const mode: Mode = oneOf("mode", body.mode, MODES);
-  const cfg: RunConfig = { ...DEFAULT_CONFIG, mode };
+  const cfg: RunConfig = { ...DEFAULT_CONFIG, mode, cellModels: [] };
 
   for (const key of Object.keys(NUMERIC) as NumericKey[]) {
-    if (body[key] !== undefined) cfg[key] = numeric(key, body[key]);
+    if (body[key] !== undefined) cfg[key] = clampNumber(key, body[key], NUMERIC[key]);
+  }
+  for (const key of BOOLEAN) {
+    const v = body[key];
+    if (v === undefined) continue;
+    if (typeof v !== "boolean") throw new Error(`${key} must be true or false`);
+    cfg[key] = v;
   }
   if (body.judge !== undefined) cfg.judge = oneOf("judge", body.judge, ["jev", "mock"] as const);
   if (body.llm !== undefined) cfg.llm = oneOf("llm", body.llm, ["openrouter", "mock"] as const);
   if (body.topology !== undefined) cfg.topology = oneOf("topology", body.topology, ["ring", "small-world"] as const);
+  if (body.claimPolicy !== undefined) cfg.claimPolicy = oneOf("claimPolicy", body.claimPolicy, ["rule", "judge"] as const);
+  if (body.cellModels !== undefined) cfg.cellModels = cellModels(body.cellModels);
   if (body.taskSource !== undefined) cfg.taskSource = taskSource(body.taskSource);
+  // The planner sets a research run's size, so n mirrors it for every display that reads config.n.
+  if (cfg.taskSource.kind === "research") cfg.n = cfg.taskSource.claims + cfg.taskSource.canaries;
   if (cfg.llm === "mock" && body.leaseMs === undefined) cfg.leaseMs = MOCK_LEASE_MS;
   return cfg;
 }

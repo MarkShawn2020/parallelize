@@ -17,7 +17,8 @@
     "smoke:live": "tsx --env-file-if-exists=.env src/cli/smoke.ts",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "evomap": "tsx --env-file-if-exists=.env src/cli/evomap.ts"
   },
   "dependencies": {
     "react": "^19.3.0",

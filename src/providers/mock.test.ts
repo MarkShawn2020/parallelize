@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { CallMeta, Domain, JudgeRequest, LLMRequest, Purpose, Question, Task, Tier } from "../core/types";
-import { MARK, NONE_CHOICE, QK } from "../core/types";
-import { MockJudge, MockLLM, MockOracle, singleContextAccuracy } from "./mock";
+import { MARK, NONE_CHOICE, QK, UNCLEAR_CHOICE } from "../core/types";
+import { claimText, parseClaims, plannerPrompt, researchPrompt } from "../tasks/research";
+import { MockJudge, MockLLM, MockOracle, latentVerdict, singleContextAccuracy } from "./mock";
+
+const noulOf = (a: unknown) => (a as { noul: number }).noul;
 
 function makeTasks(n: number, domain: Domain = "arithmetic"): Task[] {
   return Array.from({ length: n }, (_, i) => ({ id: `t${i}`, domain, prompt: `What is ${i} + 7?`, answer: String(i + 7) }));
@@ -359,5 +362,145 @@ describe("MockJudge", () => {
     const r = await new MockJudge({ tier: "system1", seed: 2 }).ask(verifyReq(tasks[0] as Task, "8"));
     expect(r.latencyMs).toBeGreaterThanOrEqual(70);
     expect(r.latencyMs).toBeLessThanOrEqual(300);
+  });
+});
+
+describe("research support", () => {
+  const research = (id: string, claim: string, answer = ""): Task => ({ id, domain: "research", prompt: researchPrompt(claim), answer });
+  const canaryTasks = Array.from({ length: 400 }, (_, i) => research(`k${i}`, `canary ${i}`, i % 2 ? "supported" : "refuted"));
+  const ideaTasks = Array.from({ length: 600 }, (_, i) => research(`i${i}`, `idea claim number ${i}`));
+  const oracle = new MockOracle([...canaryTasks, ...ideaTasks, ...makeTasks(3)]);
+  const llm = () => new MockLLM({ oracle, seed: 4, latencyMs: [0, 0] });
+  const solve = (m: MockLLM, t: Task) =>
+    m.complete(llmReq("solve", `${MARK.domain} research\n\n${t.prompt}`, { meta: meta("solve", t.id) }));
+
+  it("plans exactly the requested number of claims in the idea's language", async () => {
+    const m = llm();
+    const en = await m.complete(llmReq("plan", plannerPrompt("A pet vet app", 4), { json: true }));
+    expect(parseClaims(en.text)).toHaveLength(4);
+    expect(JSON.parse(en.text).claims.some((c: string) => /[㐀-鿿]/.test(c))).toBe(false);
+    const zh = parseClaims((await m.complete(llmReq("plan", plannerPrompt("做一个宠物医生 App", 3)))).text);
+    expect(zh).toHaveLength(3);
+    expect(zh.every((c) => /[㐀-鿿]/.test(c))).toBe(true);
+    const many = parseClaims((await m.complete(llmReq("plan", plannerPrompt("idea", 12)))).text);
+    expect(new Set(many).size).toBe(12);
+    expect(parseClaims((await m.complete(llmReq("plan", "no count given"))).text)).toHaveLength(5);
+  });
+
+  it("answers canaries correctly about 90% of the time with verdict lines", async () => {
+    const m = llm();
+    let correct = 0;
+    for (const t of canaryTasks) {
+      const { text } = await solve(m, t);
+      expect(text).toMatch(/^METHOD: .+\nANSWER: (supported|refuted|uncertain)$/);
+      if (answerOf(text) === t.answer) correct++;
+    }
+    expect(correct / canaryTasks.length).toBeGreaterThan(0.85);
+    expect(correct / canaryTasks.length).toBeLessThan(0.95);
+  });
+
+  it("gives idea claims a fixed latent verdict (60/25/15) that solves mostly agree with", async () => {
+    const shares = { supported: 0, refuted: 0, uncertain: 0 };
+    for (const t of ideaTasks) {
+      const truth = oracle.truth(t.id) as keyof typeof shares;
+      expect(truth).toBe(latentVerdict(claimText(t.prompt)));
+      shares[truth]++;
+    }
+    expect(shares.supported / ideaTasks.length).toBeCloseTo(0.6, 1);
+    expect(shares.refuted / ideaTasks.length).toBeCloseTo(0.25, 1);
+    expect(shares.uncertain / ideaTasks.length).toBeCloseTo(0.15, 1);
+
+    const m = llm();
+    let agree = 0;
+    for (const t of ideaTasks.slice(0, 300)) if (answerOf((await solve(m, t)).text) === oracle.truth(t.id)) agree++;
+    expect(agree / 300).toBeGreaterThan(0.85);
+    expect(oracle.truth("k1")).toBe("supported");
+    expect(oracle.truth("t1")).toBe("8");
+    expect(oracle.answer("i0")).toBe("");
+  });
+
+  it("answers batched research tasks with verdicts", async () => {
+    const lines = ideaTasks.slice(0, 10).map((t) => `${MARK.taskId} ${t.id}: ${t.prompt.replace(/\s+/g, " ")}`);
+    const { text } = await llm().complete(llmReq("single", lines.join("\n")));
+    for (const line of text.split("\n")) expect(line).toMatch(/^TASK i\d+: ANSWER: (supported|refuted|uncertain)$/);
+  });
+
+  it("lets verify judge an idea claim against its latent verdict", async () => {
+    const judge = new MockJudge({ tier: "system2", seed: 1, oracle, latencyMs: [0, 0] });
+    const t = ideaTasks[0] as Task;
+    const truth = oracle.truth(t.id) ?? "";
+    const other = truth === "refuted" ? "supported" : "refuted";
+    const ask = async (answer: string) =>
+      noulOf(
+        (
+          await judge.ask({
+            state: `${MARK.domain} research\n${MARK.answer} ${answer}`,
+            questions: { [QK.verify]: { type: "noul", instructions: "?" } },
+            meta: { runId: "r", purpose: "verify", taskId: t.id },
+          })
+        ).answers[QK.verify],
+      );
+    expect(await ask(truth)).toBeLessThan(0.5);
+    expect(await ask(other)).toBeGreaterThanOrEqual(0.5);
+  });
+});
+
+describe("MockJudge dispute", () => {
+  const tasks = makeTasks(200);
+  const canary: Task = { id: "k1", domain: "research", prompt: researchPrompt("The Sun orbits the Earth."), answer: "refuted" };
+  const oracle = new MockOracle([...tasks, canary]);
+  const mk = (tier: Tier, withOracle = true) => new MockJudge({ tier, seed: 9, latencyMs: [0, 0], ...(withOracle ? { oracle } : {}) });
+  type Choice = { choice: string; confidence: number; probabilities: Record<string, number> };
+  const disputeReq = (taskId: string, criteria: Record<string, string>, precedents = 0): JudgeRequest => ({
+    state: `${MARK.domain} arithmetic\nTwo proposals disagree.${
+      precedents ? `\n${MARK.precedents}\n${Array.from({ length: precedents }, (_, i) => `- case ${i}`).join("\n")}` : ""
+    }`,
+    questions: { [QK.dispute]: { type: "choice", instructions: "Which answer is right?", criteria } },
+    meta: { runId: "r", purpose: "adjudicate", taskId },
+  });
+  const criteriaFor = (t: Task) => ({
+    a1: `answer ${Number(t.answer) + 2}: guessed from the last line`,
+    a2: `answer ${t.answer}: added both numbers and rechecked`,
+    [UNCLEAR_CHOICE]: "neither answer is clearly right",
+  });
+  const choiceOf = async (judge: MockJudge, req: JudgeRequest) => (await judge.ask(req)).answers[QK.dispute] as Choice;
+
+  it("picks the candidate carrying the correct answer, as a normalized distribution", async () => {
+    for (const t of tasks.slice(0, 50)) {
+      const a = await choiceOf(mk("system1"), disputeReq(t.id, criteriaFor(t)));
+      expect(a.choice).toBe("a2");
+      expect(Object.values(a.probabilities).reduce((x, y) => x + y, 0)).toBeCloseTo(1, 9);
+      expect(a.probabilities.a2).toBeCloseTo(a.confidence, 9);
+      expect(Math.max(...Object.values(a.probabilities))).toBeCloseTo(a.confidence, 9);
+    }
+    const verdict = await choiceOf(mk("system1"), disputeReq("k1", { a1: "answer supported: it rises in the east", a2: "answer refuted: heliocentrism", [UNCLEAR_CHOICE]: "?" }));
+    expect(verdict.choice).toBe("a2");
+  });
+
+  it("grows System-1 confidence from about 0.6 with precedents, capped at 0.95; System 2 says 0.9", async () => {
+    const mean = async (tier: Tier, precedents: number) => {
+      const judge = mk(tier);
+      let sum = 0;
+      for (const t of tasks) sum += (await choiceOf(judge, disputeReq(t.id, criteriaFor(t), precedents))).confidence;
+      return sum / tasks.length;
+    };
+    expect(await mean("system1", 0)).toBeCloseTo(0.6, 1);
+    expect(await mean("system1", 2)).toBeCloseTo(0.76, 1);
+    const late = await mean("system1", 6);
+    expect(late).toBeGreaterThan(0.9);
+    expect(late).toBeLessThanOrEqual(0.95);
+    const s2 = await choiceOf(mk("system2"), disputeReq("t3", criteriaFor(tasks[3] as Task)));
+    expect(s2).toMatchObject({ choice: "a2", confidence: 0.9 });
+  });
+
+  it("chooses unclear when no candidate is right or the truth is unknown", async () => {
+    const t = tasks[5] as Task;
+    const noneRight = { a1: "answer 1000: guessed", a2: "answer 2000: guessed again", [UNCLEAR_CHOICE]: "neither" };
+    expect((await choiceOf(mk("system1"), disputeReq(t.id, noneRight))).choice).toBe(UNCLEAR_CHOICE);
+    const blind = await choiceOf(mk("system1", false), disputeReq(t.id, criteriaFor(t)));
+    expect(blind.choice).toBe(UNCLEAR_CHOICE);
+    expect(blind.confidence).toBeCloseTo(1 / 3, 9);
+    const unknownTask = await choiceOf(mk("system2"), disputeReq("nope", criteriaFor(t)));
+    expect(unknownTask.choice).toBe(UNCLEAR_CHOICE);
   });
 });

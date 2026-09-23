@@ -1,4 +1,5 @@
-import type { Decision, Judge, JudgeRequest, JudgeResult, Tier, Usage } from "../core/types";
+import { BudgetExceededError } from "../core/types";
+import type { Answer, Decision, Judge, JudgeRequest, JudgeResult, Question, Tier, Usage } from "../core/types";
 import { confidenceOf } from "./confidence";
 
 export interface DecisionHooks {
@@ -6,6 +7,11 @@ export interface DecisionHooks {
   now?: () => number;
   newId?: () => string;
 }
+
+/** Answer used when the deciding judge failed (see conservativeAnswer in ./dispute). */
+export type FallbackAnswer = (key: string, q: Question) => Answer;
+
+export const FALLBACK_MODEL = "fallback";
 
 // Module-wide so ids stay unique when several judges (e.g. one per cell) share a run.
 let seq = 0;
@@ -29,6 +35,16 @@ export function shareUsage(u: Usage, n: number): Usage {
   return { inputTokens: u.inputTokens / d, outputTokens: u.outputTokens / d, costUsd: u.costUsd / d };
 }
 
+/** A cost cap is a stop signal, not an outage to route around. */
+export function rethrowIfBudget(err: unknown): void {
+  if (err instanceof BudgetExceededError) throw err;
+}
+
+export interface ObservedJudgeOptions extends DecisionHooks {
+  /** Without it, inner failures propagate. */
+  fallback?: FallbackAnswer;
+}
+
 /** Passes calls through and logs one Decision per key, so swarm-llm and swarm-jev log alike. */
 export class ObservedJudge implements Judge {
   readonly id: string;
@@ -37,10 +53,11 @@ export class ObservedJudge implements Judge {
   private readonly onDecision: (d: Decision) => void;
   private readonly now: () => number;
   private readonly newId: () => string;
+  private readonly fallback: FallbackAnswer | undefined;
 
   constructor(
     private readonly inner: Judge,
-    opts: DecisionHooks = {},
+    opts: ObservedJudgeOptions = {},
   ) {
     this.id = inner.id;
     this.tier = inner.tier;
@@ -48,10 +65,20 @@ export class ObservedJudge implements Judge {
     this.onDecision = opts.onDecision ?? (() => {});
     this.now = opts.now ?? Date.now;
     this.newId = opts.newId ?? nextDecisionId;
+    this.fallback = opts.fallback;
   }
 
   async ask(req: JudgeRequest): Promise<JudgeResult> {
-    const r = await this.inner.ask(req);
+    let r: JudgeResult;
+    let fellBack = false;
+    try {
+      r = await this.inner.ask(req);
+    } catch (err) {
+      rethrowIfBudget(err);
+      if (!this.fallback) throw err;
+      r = this.fallbackResult(req, this.fallback);
+      fellBack = true;
+    }
     const answered = Object.keys(req.questions).filter((k) => r.answers[k] !== undefined);
     const usage = shareUsage(r.usage, answered.length);
     for (const key of answered) {
@@ -65,13 +92,20 @@ export class ObservedJudge implements Judge {
         tier: this.inner.tier,
         escalated: false,
         answer,
-        confidence: confidenceOf(answer),
+        // A default is not a judgment; confidence 0 keeps it out of any confidence-gated logic.
+        confidence: fellBack ? 0 : confidenceOf(answer),
         latencyMs: r.latencyMs,
         usage,
         precedentsUsed: 0,
+        ...(fellBack ? { fallback: true } : {}),
         at: this.now(),
       });
     }
     return r;
+  }
+
+  private fallbackResult(req: JudgeRequest, fallback: FallbackAnswer): JudgeResult {
+    const answers = Object.fromEntries(Object.entries(req.questions).map(([k, q]) => [k, fallback(k, q)]));
+    return { answers, usage: ZERO_USAGE, latencyMs: 0, model: FALLBACK_MODEL };
   }
 }

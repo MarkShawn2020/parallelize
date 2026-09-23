@@ -1,5 +1,5 @@
 // HTTP + WebSocket contract between src/server.ts and web/. Keys never cross this boundary.
-import type { Mode, RunConfig, RunSummary } from "./types";
+import type { LibraryGene, Mode, RunConfig, RunSummary } from "./types";
 
 /** POST /api/runs -> 201 StartRunResponse | 409 (a run is active) | 400 ApiError */
 export type StartRunRequest = Partial<Omit<RunConfig, "mode">> & { mode: Mode };
@@ -18,6 +18,8 @@ export interface KillResponse {
 /** POST /api/runs/:runId/echo -> 200 EchoResponse. Omit taskId to let the swarm pick one. */
 export interface EchoRequest {
   taskId?: string;
+  /** Cells forced to see the first proposal (judges pick them on stage). Default: the next two solvers. */
+  cellIds?: string[];
 }
 export interface EchoResponse {
   taskId: string;
@@ -38,7 +40,43 @@ export interface DefaultsResponse {
   providers: { jev: boolean; llm: boolean };
   llmModel: string;
   jevModel: string;
+  /** Models a newly spawned cell may use. */
+  models: string[];
+  /** Whether an EvoMap agent node is registered locally (the secret and claim URL never leave the server). */
+  evomapNode: boolean;
 }
+
+/** POST /api/runs/:runId/spawn -> 200 SpawnResponse. A new cell joins the running swarm (plug-and-play). */
+export interface SpawnRequest {
+  model?: string;
+}
+export interface SpawnResponse {
+  cellId: string;
+  model: string;
+}
+
+/** POST /api/runs/:runId/compromise -> 200 CompromiseResponse. Demo: the cell turns adversarial. */
+export interface CompromiseRequest {
+  cellId?: string;
+}
+export interface CompromiseResponse {
+  cellId: string;
+}
+
+/** POST /api/runs/:runId/fault -> 200 { ok: true }. Demo: take a provider offline or back online. */
+export interface FaultRequest {
+  provider: "jev" | "llm";
+  down: boolean;
+}
+
+/** GET /api/library -> 200 LibraryResponse */
+export interface LibraryResponse {
+  genes: number;
+  precedents: number;
+  recent: LibraryGene[];
+}
+
+/** POST /api/library/reset -> 200 { ok: true }. Clears the local experience library (cold start). */
 
 export interface ApiError {
   error: string;

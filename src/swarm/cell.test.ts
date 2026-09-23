@@ -28,7 +28,7 @@ describe("cell state", () => {
     cell.recordAttempt("rates");
     expect(cell.recordWin("rates")).toBe(false);
     expect(cell.acceptedTotal).toBe(2);
-    expect(profileLine(cell)).toBe(`${MARK.profile} arithmetic 0/0, rates 2/3, logic 0/0, gsm8k 0/0`);
+    expect(profileLine(cell)).toBe(`${MARK.profile} arithmetic 0/0, rates 2/3, logic 0/0, gsm8k 0/0, research 0/0`);
   });
 
   it("builds a claim state with profile, gene gists and guidance, never with precedent-shaped lines", () => {

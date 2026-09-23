@@ -13,9 +13,10 @@ import type {
   Tier,
   Usage,
 } from "../core/types";
-import { MARK, NONE_CHOICE, QK } from "../core/types";
+import { MARK, NONE_CHOICE, QK, UNCLEAR_CHOICE } from "../core/types";
+import { RESEARCH_VERDICTS, claimText, ideaLanguage } from "../tasks/research";
 
-const DOMAINS: readonly Domain[] = ["arithmetic", "rates", "logic", "gsm8k"];
+const DOMAINS: readonly Domain[] = ["arithmetic", "rates", "logic", "gsm8k", "research"];
 
 type Draw = (...salt: Array<string | number>) => number;
 
@@ -33,6 +34,19 @@ export class MockOracle {
   domain(taskId: string): Domain | undefined {
     return this.#tasks.get(taskId)?.domain;
   }
+
+  /** What the simulated world treats as correct: the answer, or a fixed latent verdict for idea claims (no ground truth). */
+  truth(taskId: string): string | undefined {
+    const t = this.#tasks.get(taskId);
+    if (t === undefined) return undefined;
+    return t.domain === "research" && t.answer === "" ? latentVerdict(claimText(t.prompt)) : t.answer;
+  }
+}
+
+/** Deterministic per claim: about 60% supported, 25% refuted, 15% uncertain. */
+export function latentVerdict(claim: string): string {
+  const u = unit("research-truth", claim);
+  return u < 0.6 ? "supported" : u < 0.85 ? "refuted" : "uncertain";
 }
 
 /**
@@ -59,7 +73,7 @@ export interface MockLLMOptions {
   accuracy?: Partial<Record<Domain, number>>;
 }
 
-const DEFAULT_ACCURACY: Record<Domain, number> = { arithmetic: 0.93, rates: 0.85, logic: 0.8, gsm8k: 0.85 };
+const DEFAULT_ACCURACY: Record<Domain, number> = { arithmetic: 0.93, rates: 0.85, logic: 0.8, gsm8k: 0.85, research: 0.9 };
 const STRATEGY_BONUS = 0.05;
 const TEAMMATE_COPY = 0.8;
 // EvoMap measured 55.5% of answers surviving a coordinator's summary merge.
@@ -70,6 +84,30 @@ const METHODS: Record<Domain, string> = {
   rates: "set up rate x time = amount and solved for the unknown",
   logic: "enumerated the cases and eliminated the contradictory ones",
   gsm8k: "tracked each quantity step by step and summed the result",
+  research: "weighed the claim against well-known facts and prior evidence",
+};
+
+const PLAN_CLAIMS: Record<"zh" | "en", readonly string[]> = {
+  en: [
+    "Target users will pay for a solution to this problem.",
+    "The core technology this idea needs is available today.",
+    "No existing product already solves this problem well.",
+    "A usable MVP can be built within three months.",
+    "Running cost per user stays below expected revenue per user.",
+    "Regulation does not block this idea in its main market.",
+    "Target users can be reached through existing channels at low cost.",
+    "The idea keeps a defensible advantage over likely competitors.",
+  ],
+  zh: [
+    "目标用户愿意为解决这个问题付费",
+    "实现该想法所需的核心技术目前已经成熟",
+    "市面上还没有产品很好地解决这个问题",
+    "三个月内可以做出可用的 MVP",
+    "每位用户的运行成本低于预期收入",
+    "主要市场的监管不会阻止该想法落地",
+    "可以通过现有渠道低成本触达目标用户",
+    "相对潜在竞争者，该想法具备可防守的优势",
+  ],
 };
 
 const STRATEGIES = [
@@ -137,6 +175,8 @@ export class MockLLM implements LLM {
       }
       case "single":
         return this.#single(userPrompt, draw);
+      case "plan":
+        return planResponse(prompt);
       case "merge":
         return this.#merge(userPrompt, draw);
       case "gene": {
@@ -158,6 +198,10 @@ export class MockLLM implements LLM {
     const correct = taskId === undefined ? undefined : this.#oracle.answer(taskId);
     const domain = (taskId === undefined ? undefined : this.#oracle.domain(taskId)) ?? promptDomain(prompt) ?? "arithmetic";
     const p = this.#accuracy[domain] + (prompt.includes(MARK.strategy) ? STRATEGY_BONUS : 0);
+    if (domain === "research") {
+      const truth = (taskId === undefined ? undefined : this.#oracle.truth(taskId)) ?? latentVerdict(claimText(prompt));
+      return { method: METHODS.research, answer: verdictAttempt(truth, p, draw) };
+    }
     return { method: METHODS[domain], answer: attempt(correct, p, draw) };
   }
 
@@ -165,7 +209,13 @@ export class MockLLM implements LLM {
     const ids = batchedTaskIds(userPrompt);
     const p = singleContextAccuracy(ids.length);
     return ids
-      .map((id) => `${MARK.taskId} ${id}: ${MARK.answer} ${attempt(this.#oracle.answer(id), p, draw, id)}`)
+      .map((id) => {
+        const answer =
+          this.#oracle.domain(id) === "research"
+            ? verdictAttempt(this.#oracle.truth(id) ?? "uncertain", p, draw, id)
+            : attempt(this.#oracle.answer(id), p, draw, id);
+        return `${MARK.taskId} ${id}: ${MARK.answer} ${answer}`;
+      })
       .join("\n");
   }
 
@@ -177,6 +227,23 @@ export class MockLLM implements LLM {
       })
       .join("\n");
   }
+}
+
+/** Planner reply with the "exactly N" claims the prompt asks for, in the idea's language. */
+function planResponse(prompt: string): string {
+  const n = Math.min(50, Math.max(1, Number(/exactly\s+(\d+)/i.exec(prompt)?.[1] ?? 5)));
+  const lang = ideaLanguage(prompt);
+  const claims = Array.from(
+    { length: n },
+    (_, i) => PLAN_CLAIMS[lang][i] ?? (lang === "zh" ? `关于该想法的第 ${i + 1} 条论断成立` : `Claim ${i + 1} about the idea holds.`),
+  );
+  return JSON.stringify({ claims });
+}
+
+function verdictAttempt(truth: string, p: number, draw: Draw, salt: string | number = ""): string {
+  if (draw("correct", salt) < p) return truth;
+  const others = RESEARCH_VERDICTS.filter((v) => v !== truth);
+  return others[Math.floor(draw("wrong", salt) * others.length)] ?? "uncertain";
 }
 
 function attempt(correct: string | undefined, p: number, draw: Draw, salt: string | number = ""): string {
@@ -294,7 +361,22 @@ export class MockJudge implements Judge {
     if (key === QK.claim && q.type === "choice") return this.#claim(q.criteria, head, precedents, draw);
     if (key === QK.verify && q.type === "noul") return { type: "noul", noul: this.#verify(head, precedents, taskId, draw) };
     if (key === QK.adopt && q.type === "noul") return { type: "noul", noul: this.#adopt(precedents, draw) };
+    if (key === QK.dispute && q.type === "choice") return this.#dispute(q.criteria, precedents, taskId, draw);
     return uninformed(q);
+  }
+
+  /** Criteria keys are distinct candidate answers ("answer <value>: <summary>") plus UNCLEAR_CHOICE. */
+  #dispute(criteria: Record<string, string>, precedents: number, taskId: string | undefined, draw: Draw): Answer {
+    const keys = Object.keys(criteria);
+    const fallback = keys.includes(UNCLEAR_CHOICE) ? UNCLEAR_CHOICE : (keys[0] ?? UNCLEAR_CHOICE);
+    const correct = taskId === undefined ? undefined : this.#oracle?.truth(taskId);
+    if (correct === undefined || correct === "") return choiceAnswer(keys, fallback, keys.length > 0 ? 1 / keys.length : 0);
+    const match = keys.find((k) => k !== UNCLEAR_CHOICE && sameAnswer(disputedValue(criteria[k] ?? "") ?? "", correct));
+    const chosen = match ?? UNCLEAR_CHOICE;
+    if (!keys.includes(chosen)) return choiceAnswer(keys, fallback, 1 / keys.length);
+    const raw =
+      this.tier === "system1" ? Math.min(0.95, 0.6 + 0.08 * precedents + noise(draw, 0.1 * 0.85 ** precedents)) : 0.9;
+    return choiceAnswer(keys, chosen, keys.length <= 1 ? 1 : Math.max(1 / keys.length, raw));
   }
 
   #adopt(precedents: number, draw: Draw): number {
@@ -328,7 +410,7 @@ export class MockJudge implements Judge {
 
   #verify(head: string, precedents: number, taskId: string | undefined, draw: Draw): number {
     const proposed = tokenAfter(head, MARK.answer);
-    const correct = taskId === undefined ? undefined : this.#oracle?.answer(taskId);
+    const correct = taskId === undefined ? undefined : this.#oracle?.truth(taskId);
     if (proposed === undefined || correct === undefined) return 0.35;
     const wrong = !sameAnswer(proposed, correct);
     const base = wrong ? Math.min(0.92, 0.72 + 0.05 * precedents) : Math.max(0.06, 0.22 - 0.03 * precedents);
@@ -375,6 +457,10 @@ function mentionedDomain(description: string, names: string[]): string | undefin
     }
   }
   return found;
+}
+
+function disputedValue(description: string): string | undefined {
+  return /\banswer\s+(.+?):(?=\s|$)/i.exec(description)?.[1]?.trim();
 }
 
 function choiceAnswer(keys: string[], chosen: string, confidence: number): Answer {

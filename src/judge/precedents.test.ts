@@ -36,6 +36,66 @@ describe("MemoryPrecedentStore", () => {
     expect(long?.state).toHaveLength(10);
     expect(short?.state).toBe("short");
   });
+
+  it("keeps proposals invisible until confirmed", () => {
+    const store = new MemoryPrecedentStore();
+    const id = store.propose(p("verify", "s1", 1));
+    expect(id).toBe("p1");
+    expect(store.relevant("verify", 5)).toEqual([]);
+    expect(store.size()).toBe(0);
+    expect(store.all()).toEqual([]);
+    expect(store.pendingSize()).toBe(1);
+
+    store.confirm(id);
+    expect(store.relevant("verify", 5).map((x) => x.state)).toEqual(["s1"]);
+    expect(store.size("verify")).toBe(1);
+    expect(store.pendingSize()).toBe(0);
+    store.confirm(id);
+    expect(store.size()).toBe(1);
+  });
+
+  it("never shows rejected proposals, even if confirmed later", () => {
+    const store = new MemoryPrecedentStore();
+    const id = store.propose(p("verify", "wrong", 1));
+    store.reject(id);
+    store.confirm(id);
+    expect(store.size()).toBe(0);
+    expect(store.pendingSize()).toBe(0);
+  });
+
+  it("issues distinct ids and truncates proposed state", () => {
+    const store = new MemoryPrecedentStore({ maxStateChars: 5 });
+    const a = store.propose(p("verify", "abcdefgh", 1));
+    const b = store.propose(p("adopt", "x", 2));
+    expect(a).not.toBe(b);
+    store.confirm(a);
+    expect(store.relevant("verify", 1)[0]?.state).toBe("abcd…");
+  });
+
+  it("caps pending proposals, dropping the oldest", () => {
+    const store = new MemoryPrecedentStore({ maxPending: 2 });
+    const ids = [1, 2, 3].map((i) => store.propose(p("verify", `s${i}`, i)));
+    expect(store.pendingSize()).toBe(2);
+    for (const id of ids) store.confirm(id);
+    expect(store.all().map((x) => x.state)).toEqual(["s2", "s3"]);
+  });
+
+  it("defaults the pending cap to 200", () => {
+    const store = new MemoryPrecedentStore();
+    for (let i = 0; i < 250; i++) store.propose(p("verify", `s${i}`, i));
+    expect(store.pendingSize()).toBe(200);
+  });
+
+  it("lists confirmed precedents across keys, oldest first", () => {
+    const store = new MemoryPrecedentStore();
+    store.add(p("verify", "v5", 5));
+    const pending = store.propose(p("adopt", "a2", 2));
+    store.add(p("claim", "c1", 1));
+    store.add(p("verify", "v5b", 5));
+    store.propose(p("adopt", "never", 0));
+    store.confirm(pending);
+    expect(store.all().map((x) => x.state)).toEqual(["c1", "a2", "v5", "v5b"]);
+  });
 });
 
 describe("formatPrecedents", () => {

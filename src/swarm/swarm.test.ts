@@ -123,7 +123,8 @@ describe("Swarm", () => {
     expect(ofType("cell.spawned").every((e) => e.neighbors.length > 0)).toBe(true);
     const accepted = ofType("task.accepted");
     expect(accepted).toHaveLength(9);
-    expect(accepted.every((e) => e.correct && e.independentSources === 1)).toBe(true);
+    // Probation and random audits re-solve some lone proposals, so a few tasks carry a second source.
+    expect(accepted.every((e) => e.correct && e.independentSources >= 1)).toBe(true);
     // Work spreads across cells: no central scheduler, yet more than one cell solves.
     expect(new Set(ofType("task.proposed").map((e) => e.cellId)).size).toBeGreaterThan(1);
   });

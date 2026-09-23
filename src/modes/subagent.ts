@@ -1,7 +1,8 @@
 import { MARK, SUMMARY_TOKEN_BUDGET } from "../core/types";
 import type { LLM, PublicTask } from "../core/types";
 import { Semaphore } from "../providers/limiter";
-import { parseBatchedAnswers } from "./single";
+import { NUMBER_FORMAT, parseBatchedAnswers } from "./single";
+import type { AnswerFormat } from "./single";
 
 const MERGE_CHUNK = 64;
 const REPORT_MAX_CHARS = SUMMARY_TOKEN_BUDGET * 4;
@@ -22,7 +23,9 @@ export async function runSubagent(p: {
   tasks: PublicTask[];
   llm: LLM;
   concurrency: number;
+  format?: AnswerFormat;
 }): Promise<Map<string, string>> {
+  const format = p.format ?? NUMBER_FORMAT;
   const limiter = new Semaphore(Math.max(1, Math.floor(p.concurrency)));
   const reports = await Promise.all(
     p.tasks.map((t) =>
@@ -31,7 +34,7 @@ export async function runSubagent(p: {
           messages: [
             {
               role: "system",
-              content: `You are a worker agent. Solve the problem, then report in exactly one line: '${MARK.taskId} ${t.id} report: <method in a few words> ${MARK.answer} <number>'.`,
+              content: `You are a worker agent. Solve the problem, then report in exactly one line: '${MARK.taskId} ${t.id} report: <method in a few words> ${MARK.answer} ${format.hint}'.`,
             },
             { role: "user", content: `${MARK.taskId} ${t.id}: ${t.prompt}` },
           ],
@@ -51,14 +54,14 @@ export async function runSubagent(p: {
       messages: [
         {
           role: "system",
-          content: `You are the coordinator. From the worker reports, write the final answer for every task as '${MARK.taskId} <id>: ${MARK.answer} <number>'.`,
+          content: `You are the coordinator. From the worker reports, write the final answer for every task as '${MARK.taskId} <id>: ${MARK.answer} ${format.hint}'.`,
         },
         { role: "user", content: chunk.join("\n") },
       ],
       maxTokens: Math.min(8000, 200 + 40 * chunk.length),
       meta: { runId: p.runId, purpose: "merge" },
     });
-    for (const [id, answer] of parseBatchedAnswers(r.text, ids)) answers.set(id, answer);
+    for (const [id, answer] of parseBatchedAnswers(r.text, ids, format.extract)) answers.set(id, answer);
   }
   return answers;
 }

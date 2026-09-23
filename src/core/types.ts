@@ -3,12 +3,23 @@
 
 // ---------------------------------------------------------------- run setup
 
-export type Mode = "single" | "subagent" | "swarm-llm" | "swarm-jev";
-export const MODES: readonly Mode[] = ["single", "subagent", "swarm-llm", "swarm-jev"];
+/**
+ * single: one context for all tasks. single-vote: each task solved independently k times, majority vote,
+ * k sized to a token budget (the fair "same budget" baseline). subagent: workers + lossy coordinator merge.
+ * swarm-llm / swarm-jev: judgment coordination by LLM vs Jev+escalation. swarm-rules: fixed rules, no judge.
+ * swarm-solo: parallel claim + deterministic merge only (review and gene exchange off) = the "sum of singles".
+ */
+export type Mode = "single" | "single-vote" | "subagent" | "swarm-llm" | "swarm-jev" | "swarm-rules" | "swarm-solo";
+export const MODES: readonly Mode[] = ["single", "single-vote", "subagent", "swarm-llm", "swarm-jev", "swarm-rules", "swarm-solo"];
+export const SWARM_MODES: readonly Mode[] = ["swarm-llm", "swarm-jev", "swarm-rules", "swarm-solo"];
 
-export type Domain = "arithmetic" | "rates" | "logic" | "gsm8k";
+export type Domain = "arithmetic" | "rates" | "logic" | "gsm8k" | "research";
 
-export type TaskSourceConfig = { kind: "synthetic" } | { kind: "gsm8k"; path: string };
+export type TaskSourceConfig =
+  | { kind: "synthetic" }
+  | { kind: "gsm8k"; path: string }
+  /** An idea decomposed by an LLM planner into verifiable claims, plus canary claims of known truth. */
+  | { kind: "research"; idea: string; claims: number; canaries: number };
 
 export interface RunConfig {
   mode: Mode;
@@ -35,6 +46,36 @@ export interface RunConfig {
   gossipEvery: number;
   /** Candidate tasks shown to a cell per claim decision (Jev choice supports <= 255). */
   claimCandidates: number;
+  /** rule: zero-token atomic claim by priority (default). judge: ask the judge which task to claim. */
+  claimPolicy: "rule" | "judge";
+  /** Probability that a lone low-risk proposal is still re-solved (random audit). */
+  auditRate: number;
+  /** A cell's first N proposals are always reviewed (probation). */
+  probation: number;
+  /** Proposals from cells below this trust are always reviewed. */
+  reviewTrust: number;
+  /** Below this trust, after >= probation judged proposals, a cell is quarantined. */
+  quarantineTrust: number;
+  /** Failed reviews on one task before it counts as stuck (triggers library / EvoMap lookup). */
+  stuckAfter: number;
+  /** Calibration guard: rolling window of escalated System-1 answers per key... */
+  guardWindow: number;
+  /** ...if System 1 disagreed with System 2 on more than this share, the key goes straight to System 2. */
+  guardMaxDisagreement: number;
+  /** Load the persistent experience library at start and publish verified experience at the end. */
+  inherit: boolean;
+  /** Search EvoMap's public gene catalog when a task is stuck. */
+  evomapLookup: boolean;
+  /** Publish genes that pass the holdout gate to EvoMap as Gene+Capsule+EvolutionEvent bundles. */
+  evomapPublish: boolean;
+  /** Fresh tasks per holdout A/B run for the publish gate. */
+  publishGateTasks: number;
+  /** Minimum extra correct answers (with gene minus without) required to publish. */
+  publishGateMinDelta: number;
+  /** LLM model per cell, assigned round-robin; empty means the default LLM_MODEL. */
+  cellModels: string[];
+  /** single-vote: target total tokens; 0 means a fixed k of 5 samples per task. */
+  voteBudgetTokens: number;
 }
 
 // ---------------------------------------------------------------- tasks
@@ -73,7 +114,8 @@ export type Purpose =
   | "verify"
   | "adopt"
   | "gene"
-  | "adjudicate";
+  | "adjudicate"
+  | "plan";
 export const WORK_PURPOSES: readonly Purpose[] = ["solve", "single", "report"];
 
 export interface CallMeta {
@@ -145,7 +187,9 @@ export interface Judge {
 // ---------------------------------------------------------------- prompt conventions
 // Mock providers parse these markers, so producers and consumers must use the constants.
 
-export const QK = { claim: "claim", verify: "verify", adopt: "adopt" } as const;
+export const QK = { claim: "claim", verify: "verify", adopt: "adopt", dispute: "dispute" } as const;
+/** Choice key a dispute decision uses when neither proposed answer is clearly right. */
+export const UNCLEAR_CHOICE = "unclear";
 export const MARK = {
   /** Line prefix carrying a proposed answer inside judge state or LLM output. */
   answer: "ANSWER:",
@@ -184,6 +228,12 @@ export interface Decision {
   latencyMs: number;
   usage: Usage;
   precedentsUsed: number;
+  /** Pending precedent created by this System-2 verdict (confirmed or rejected once the outcome is known). */
+  precedentId?: string;
+  /** System 2 failed and a conservative default was used. */
+  fallback?: boolean;
+  /** System 1 was skipped because the calibration guard routed this key to System 2. */
+  guarded?: boolean;
   at: number;
 }
 
@@ -199,6 +249,12 @@ export interface PrecedentStore {
   /** Most recent k precedents for this key, newest last. */
   relevant(key: string, k: number): Precedent[];
   size(key?: string): number;
+  /** Adds an unconfirmed precedent; relevant() ignores it until confirm(). Returns its id. */
+  propose(p: Precedent): string;
+  confirm(id: string): void;
+  reject(id: string): void;
+  /** Confirmed precedents, oldest first (for persisting to the experience library). */
+  all(): Precedent[];
 }
 
 /** Outcome known only after the fact (acceptance or ground truth), used for calibration plots. */
@@ -391,6 +447,19 @@ export interface LiveMetrics {
   reopened: number;
   echoAlarms: number;
   genesAdopted: number;
+  /** Among non-escalated System-1 "no review needed" verify decisions: share whose answer was actually wrong. */
+  passThroughErrorRate: number;
+  /** Accepted answers that are wrong / accepted. */
+  falseAcceptRate: number;
+  /** Among accepted answers with >= 2 independent sources: share that are wrong (correlated errors). */
+  falseAcceptVerifiedRate: number;
+  coordinationShare: number;
+  quarantined: number;
+  libraryHits: number;
+  inheritedGenes: number;
+  jevDown: boolean;
+  /** False for research runs: only canary claims have ground truth. */
+  accuracyApplicable: boolean;
   elapsedMs: number;
 }
 
@@ -439,7 +508,26 @@ export type SwarmEvent =
   | (Base & { type: "gene.forgotten"; geneId: string; cellId: string })
   | (Base & { type: "echo.detected"; taskId: string; proposalIds: string[]; agreeing: number; independentSources: number })
   | (Base & { type: "metrics"; metrics: LiveMetrics })
-  | (Base & { type: "log"; level: "info" | "warn" | "error"; message: string });
+  | (Base & { type: "log"; level: "info" | "warn" | "error"; message: string })
+  | (Base & { type: "protocol.message"; message: ProtocolMessage })
+  | (Base & { type: "cell.card"; card: CapabilityCard })
+  | (Base & { type: "cell.quarantined"; cellId: string; trust: number; reason: string })
+  /** Demo ground truth for the dashboard; the swarm itself is never told. */
+  | (Base & { type: "cell.compromised"; cellId: string })
+  | (Base & { type: "permission.denied"; cellId: string; action: string; reason: string })
+  | (Base & { type: "provider.fault"; provider: "jev" | "llm"; down: boolean })
+  | (Base & { type: "judge.guard"; key: string; disagreement: number; window: number })
+  | (Base & { type: "library.loaded"; genes: number; precedents: number })
+  | (Base & { type: "library.hit"; cellId: string; taskId: string; source: "local" | "evomap"; geneIds: string[]; titles: string[] })
+  | (Base & {
+      type: "library.published";
+      genes: number;
+      precedents: number;
+      gate: Array<{ geneId: string; withGene: number; withoutGene: number; tasks: number; passed: boolean }>;
+      evomap?: { assetIds: string[]; urls: string[]; status: string };
+    })
+  | (Base & { type: "link.formed"; from: string; to: string; reason: "gossip" | "review" | "discover" })
+  | (Base & { type: "research.report"; report: ResearchReport })
 
 export type SwarmEventType = SwarmEvent["type"];
 
@@ -454,4 +542,109 @@ export class BudgetExceededError extends Error {
     super(`cost cap reached: $${spentUsd.toFixed(4)} >= $${capUsd.toFixed(2)}`);
     this.name = "BudgetExceededError";
   }
+}
+
+// ---------------------------------------------------------------- v2: protocol, registry, trust, library, research
+
+/** What an agent publishes about itself so others can discover it. No central scheduler reads this. */
+export interface CapabilityCard {
+  agentId: string;
+  model: string;
+  domains: Partial<Record<Domain, { wins: number; trials: number }>>;
+  /** Short gists of the strategy genes it holds. */
+  genes: string[];
+  trust: number;
+  status: "active" | "quarantined" | "dead";
+  joinedAt: number;
+  lastSeen: number;
+}
+
+export type ProtocolType =
+  | "ANNOUNCE"
+  | "HEARTBEAT"
+  | "DISCOVER"
+  | "CLAIM"
+  | "PROPOSE"
+  | "REVIEW_REQUEST"
+  | "ACCEPT"
+  | "ECHO_ALARM"
+  | "GENE_OFFER"
+  | "GENE_ADOPT"
+  | "GENE_REJECT"
+  | "LIBRARY_QUERY"
+  | "LIBRARY_RESULT"
+  | "QUARANTINE"
+  | "DENIED";
+
+/** Transport-agnostic envelope; the in-process bus and a future WebSocket binding carry the same JSON. */
+export interface ProtocolMessage {
+  v: 1;
+  id: string;
+  runId: string;
+  type: ProtocolType;
+  from: string;
+  /** An agent id, "*" (broadcast), or a shared service: "board" | "registry" | "library". */
+  to: string;
+  /** Lineage node ids this message is derived from. */
+  parents: string[];
+  at: number;
+  body: Record<string, unknown>;
+}
+
+export interface AgentRegistry {
+  announce(card: CapabilityCard): void;
+  update(agentId: string, patch: Partial<Omit<CapabilityCard, "agentId">>): CapabilityCard | undefined;
+  get(agentId: string): CapabilityCard | undefined;
+  list(): CapabilityCard[];
+  /** Active cards ranked by smoothed win rate in the domain (if given), then trust; excludes ids. */
+  discover(q: { domain?: Domain; exclude?: string[]; limit: number }): CapabilityCard[];
+}
+
+export interface TrustLedger {
+  get(agentId: string): number;
+  judged(agentId: string): number;
+  /** Records whether the agent's proposal agreed with the accepted answer; returns the new trust. */
+  record(agentId: string, agreed: boolean): number;
+}
+
+export interface LibraryGene extends Gene {
+  source: "local" | "evomap";
+  runId?: string;
+  /** EvoMap asset id when the gene came from (or was published to) EvoMap. */
+  assetId?: string;
+  evidence: { wins: number; trials: number; independentSources?: number };
+}
+
+export interface ExperienceLibrary {
+  load(): Promise<{ genes: number; precedents: number }>;
+  genes(domain?: Domain): LibraryGene[];
+  precedents(): Precedent[];
+  /** Best genes for a domain by evidence (smoothed win rate), at most k. */
+  search(domain: Domain, k: number): LibraryGene[];
+  publish(genes: LibraryGene[], precedents: Precedent[]): Promise<{ genes: number; precedents: number }>;
+  reset(): Promise<void>;
+  stats(): { genes: number; precedents: number };
+}
+
+export type ResearchVerdict = "supported" | "refuted" | "uncertain";
+
+export interface ResearchClaimResult {
+  taskId: string;
+  claim: string;
+  /** Known truth for canary claims; absent for claims derived from the idea. */
+  canary?: ResearchVerdict;
+  verdict: ResearchVerdict | "unresolved";
+  independentSources: number;
+  proposals: number;
+  dissent: number;
+}
+
+export interface ResearchReport {
+  idea: string;
+  claims: ResearchClaimResult[];
+  canaryPassed: number;
+  canaryTotal: number;
+  recommendation: "continue" | "abandon" | "inconclusive";
+  /** The deterministic rule that produced the recommendation, in plain words. */
+  rule: string;
 }

@@ -1,268 +1,247 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { DefaultsResponse } from "../../../src/core/api";
-import { MODES, type Mode, type RunConfig } from "../../../src/core/types";
-import { errorText, getDefaults, injectEcho, kill, startRun, stopRun } from "../api";
-import { MODE_LABEL } from "../labels";
+import { useEffect, useRef, useState } from "react";
+import type { DefaultsResponse, StartRunRequest } from "../../../src/core/api";
+import { MODES, SWARM_MODES, type Mode, type RunConfig, type TaskSourceConfig } from "../../../src/core/types";
+import { errorText, startRun } from "../api";
+import { MODE_HINT, MODE_LABEL } from "../labels";
+import { Button, Field, NumberInput, Select, Toggle, clampInt, inputClass } from "./controls";
 
 interface Props {
-  runId: string | null;
+  defaults: DefaultsResponse | null;
+  defaultsError: string | null;
   running: boolean;
   simulated: boolean;
-  liveCells: number;
-  /** True while the event stream is connected. */
-  online: boolean;
+  hasRun: boolean;
 }
 
 type Judge = RunConfig["judge"];
 type Llm = RunConfig["llm"];
+type Source = "math" | "research";
 
-const LIMITS = { n: [1, 500], cells: [1, 64] } as const;
+const LIMITS = { n: [1, 500], cells: [1, 64], claims: [3, 10], canaries: [0, 6] } as const;
+export const IDEA_MAX = 500;
+const PUBLISH_WARNING = "会把通过验证门的 Gene 公开发布到 EvoMap";
 
-function clampInt(raw: string, [lo, hi]: readonly [number, number], fallback: number): number {
-  const v = Number.parseInt(raw, 10);
-  return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
+function mathSource(defaults: DefaultsResponse | null): TaskSourceConfig | undefined {
+  const d = defaults?.defaults.taskSource;
+  if (!d) return undefined;
+  return d.kind === "research" ? { kind: "synthetic" } : d;
 }
 
-export function ControlBar({ runId, running, simulated, liveCells, online }: Props) {
+export function ControlBar({ defaults, defaultsError, running, simulated, hasRun }: Props) {
   const [mode, setMode] = useState<Mode>("swarm-jev");
+  const [source, setSource] = useState<Source>("math");
   const [n, setN] = useState("40");
   const [cells, setCells] = useState("8");
   const [judge, setJudge] = useState<Judge>("mock");
   const [llm, setLlm] = useState<Llm>("mock");
-  const [defaults, setDefaults] = useState<DefaultsResponse | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [inherit, setInherit] = useState(true);
+  const [evomapLookup, setEvomapLookup] = useState(false);
+  const [evomapPublish, setEvomapPublish] = useState(false);
+  const [idea, setIdea] = useState("");
+  const [claims, setClaims] = useState("6");
+  const [canaries, setCanaries] = useState("2");
+  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
-
   const formSeeded = useRef(false);
 
-  // Refetch whenever the stream (re)connects: the page may load before the server is up.
   useEffect(() => {
-    let cancelled = false;
-    getDefaults()
-      .then((d) => {
-        if (cancelled) return;
-        setDefaults(d);
-        setNotice((prev) => (prev?.error ? null : prev));
-        if (formSeeded.current) return;
-        formSeeded.current = true;
-        setN(String(d.defaults.n));
-        setCells(String(d.defaults.cells));
-        setJudge(d.providers.jev ? d.defaults.judge : "mock");
-        setLlm(d.providers.llm ? d.defaults.llm : "mock");
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setNotice({ text: `默认配置 defaults: ${errorText(e)}`, error: true });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [online]);
+    if (!defaults || formSeeded.current) return;
+    formSeeded.current = true;
+    const d = defaults.defaults;
+    setN(String(d.n));
+    setCells(String(d.cells));
+    setJudge(defaults.providers.jev ? d.judge : "mock");
+    setLlm(defaults.providers.llm ? d.llm : "mock");
+    setInherit(d.inherit);
+    setEvomapLookup(d.evomapLookup);
+    // Publishing stays off until someone switches it on in this session.
+  }, [defaults]);
 
-  async function act(label: string, fn: () => Promise<string | undefined>) {
-    setBusy(label);
+  const research = source === "research";
+  const ideaText = idea.trim();
+  const swarm = SWARM_MODES.includes(mode);
+  const noNode = defaults?.evomapNode === false;
+  const canStart = !running && !busy && (!research || ideaText.length > 0);
+
+  const start = async () => {
+    setBusy(true);
     setNotice(null);
+    const fallback = defaults?.defaults;
+    const taskSource: TaskSourceConfig | undefined = research
+      ? {
+          kind: "research",
+          idea: ideaText,
+          claims: clampInt(claims, LIMITS.claims, 6),
+          canaries: clampInt(canaries, LIMITS.canaries, 2),
+        }
+      : mathSource(defaults);
+    const req: StartRunRequest = {
+      mode,
+      cells: clampInt(cells, LIMITS.cells, fallback?.cells ?? 8),
+      judge,
+      llm,
+      inherit,
+      evomapLookup,
+      evomapPublish: evomapPublish && !noNode,
+      ...(research ? {} : { n: clampInt(n, LIMITS.n, fallback?.n ?? 40) }),
+      ...(taskSource ? { taskSource } : {}),
+    };
     try {
-      const text = await fn();
-      if (text) setNotice({ text, error: false });
+      const res = await startRun(req);
+      setNotice({ text: `已启动 started ${res.runId}`, error: false });
     } catch (e) {
-      setNotice({ text: `${label}: ${errorText(e)}`, error: true });
+      setNotice({ text: `启动 start: ${errorText(e)}`, error: true });
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
-  }
-
-  const start = () =>
-    void act("启动 start", async () => {
-      const fallback = defaults?.defaults;
-      const res = await startRun({
-        mode,
-        n: clampInt(n, LIMITS.n, fallback?.n ?? 40),
-        cells: clampInt(cells, LIMITS.cells, fallback?.cells ?? 8),
-        judge,
-        llm,
-      });
-      return `已启动 started ${res.runId}`;
-    });
-  const onRun = (label: string, fn: (id: string) => Promise<string>) => () => {
-    if (runId) void act(label, () => fn(runId));
   };
-  const stop = onRun("停止 stop", async (id) => {
-    await stopRun(id);
-    return "已停止 stopped";
-  });
-  const killRandom = onRun("击杀 kill", async (id) => `击杀 killed ${(await kill(id)).cellId}`);
-  const echo = onRun("回声 echo", async (id) => `注入回声 echo → ${(await injectEcho(id)).taskId}`);
 
-  const swarm = mode === "swarm-llm" || mode === "swarm-jev";
+  const shownNotice = notice ?? (defaultsError ? { text: defaultsError, error: true } : null);
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border border-grid bg-panel/90 px-3 py-2 text-sm 2xl:flex-nowrap">
-      <div role="radiogroup" aria-label="模式 Mode" className="flex shrink-0 border border-grid">
-        {MODES.map((m) => (
-          <button
-            key={m}
-            type="button"
-            role="radio"
-            aria-checked={mode === m}
-            disabled={running}
-            onClick={() => setMode(m)}
-            className={`px-3 py-1.5 font-display text-[15px] tracking-wide transition-colors disabled:cursor-not-allowed ${
-              mode === m ? "bg-accent text-bg" : "text-muted hover:bg-panel-2 hover:text-fg disabled:hover:bg-transparent"
-            }`}
-          >
-            {MODE_LABEL[m]}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-col gap-2 border border-grid bg-panel/90 px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div role="radiogroup" aria-label="模式 Mode" className="flex shrink-0 border border-grid">
+          {MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={mode === m}
+              title={MODE_HINT[m]}
+              disabled={running}
+              onClick={() => setMode(m)}
+              className={`px-2.5 py-1.5 font-display text-[15px] tracking-wide whitespace-nowrap transition-colors disabled:cursor-not-allowed ${
+                mode === m ? "bg-accent text-bg" : "text-muted enabled:hover:bg-panel-2 enabled:hover:text-fg"
+              }`}
+            >
+              {MODE_LABEL[m]}
+            </button>
+          ))}
+        </div>
 
-      <Field label="任务 n">
-        <NumberInput value={n} onChange={setN} limits={LIMITS.n} disabled={running} />
-      </Field>
-      <Field label="单元 cells">
-        <NumberInput value={cells} onChange={setCells} limits={LIMITS.cells} disabled={running || !swarm} />
-      </Field>
-      <Field label="System 1" provider={{ name: "Jev", ok: defaults?.providers.jev, model: defaults?.jevModel }}>
-        <Select
-          value={judge}
-          options={["jev", "mock"]}
-          onChange={setJudge}
-          disabled={running || mode !== "swarm-jev"}
-        />
-      </Field>
-      <Field label="System 2" provider={{ name: "LLM", ok: defaults?.providers.llm, model: defaults?.llmModel }}>
-        <Select
-          value={llm}
-          options={["openrouter", "mock"]}
-          onChange={setLlm}
-          disabled={running}
-        />
-      </Field>
+        <div role="radiogroup" aria-label="任务来源 Task source" className="flex shrink-0 border border-grid">
+          {(
+            [
+              ["math", "数学题"],
+              ["research", "点子验证"],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={source === k}
+              disabled={running}
+              onClick={() => setSource(k)}
+              className={`px-2.5 py-1.5 font-display text-[15px] tracking-wide transition-colors disabled:cursor-not-allowed ${
+                source === k ? "bg-s1 text-bg" : "text-muted enabled:hover:bg-panel-2 enabled:hover:text-fg"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-      <div className="flex shrink-0 gap-2">
-        <Button onClick={start} disabled={running || busy !== null} tone="accent">
+        <Field label="任务 n">
+          <NumberInput value={n} onChange={setN} limits={LIMITS.n} disabled={running || research} />
+        </Field>
+        <Field label="单元 cells">
+          <NumberInput value={cells} onChange={setCells} limits={LIMITS.cells} disabled={running || !swarm} />
+        </Field>
+        <Field label="System 1" provider={{ name: "Jev", ok: defaults?.providers.jev, model: defaults?.jevModel }}>
+          <Select value={judge} options={["jev", "mock"]} onChange={setJudge} disabled={running || mode !== "swarm-jev"} />
+        </Field>
+        <Field label="System 2" provider={{ name: "LLM", ok: defaults?.providers.llm, model: defaults?.llmModel }}>
+          <Select value={llm} options={["openrouter", "mock"]} onChange={setLlm} disabled={running} />
+        </Field>
+
+        <Button
+          onClick={() => void start()}
+          disabled={!canStart}
+          tone="accent"
+          title={research && !ideaText ? "请先输入点子 enter an idea first" : undefined}
+        >
           启动 Start
         </Button>
-        <Button onClick={stop} disabled={!running || busy !== null}>
-          停止 Stop
-        </Button>
-      </div>
-      <div className="flex shrink-0 gap-2">
-        <Button onClick={killRandom} disabled={!running || liveCells === 0 || busy !== null} tone="danger">
-          随机击杀 Kill cell
-        </Button>
-        <Button onClick={echo} disabled={!running || busy !== null} tone="danger">
-          注入回声 Inject echo
-        </Button>
+
+        {simulated && hasRun && (
+          <span className="ml-auto shrink-0 animate-pulse bg-warn px-3 py-1 font-display text-base font-bold tracking-[0.2em] text-bg">
+            模拟 SIMULATION
+          </span>
+        )}
       </div>
 
-      {notice && (
-        <span
-          title={notice.text}
-          role={notice.error ? "alert" : "status"}
-          className={`min-w-0 flex-1 truncate text-xs ${notice.error ? "text-danger" : "text-muted"}`}
-        >
-          {notice.text}
-        </span>
-      )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="text-xs text-muted">选项 Options</span>
+        <Toggle
+          label="继承经验"
+          hint="开局载入本地经验库（Gene + 已确认先例），结束时沉淀新经验 inherit"
+          checked={inherit}
+          onChange={setInherit}
+          disabled={running}
+        />
+        <Toggle
+          label="EvoMap 检索"
+          hint="任务卡住时检索 EvoMap 公开 Gene evomapLookup"
+          checked={evomapLookup}
+          onChange={setEvomapLookup}
+          disabled={running}
+        />
+        <Toggle
+          label="发布到 EvoMap"
+          hint={noNode ? "未注册 EvoMap 节点 no EvoMap node registered" : "通过留出集 A/B 验证门的 Gene 才会发布 evomapPublish"}
+          checked={evomapPublish && !noNode}
+          onChange={setEvomapPublish}
+          disabled={running || noNode}
+          tone="warn"
+        />
+        {evomapPublish && !noNode && (
+          <span role="note" className="shrink-0 border border-warn/50 bg-warn/10 px-2 py-0.5 text-xs text-warn">
+            {PUBLISH_WARNING}
+          </span>
+        )}
+        {shownNotice && (
+          <span
+            title={shownNotice.text}
+            role={shownNotice.error ? "alert" : "status"}
+            className={`min-w-0 flex-1 truncate text-right text-xs ${shownNotice.error ? "text-danger" : "text-muted"}`}
+          >
+            {shownNotice.text}
+          </span>
+        )}
+      </div>
 
-      {simulated && runId && (
-        <span className="ml-auto shrink-0 animate-pulse bg-warn px-3 py-1 font-display text-base font-bold tracking-[0.2em] text-bg">
-          模拟 SIMULATION
-        </span>
+      {research && !running && (
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+          <label className="flex min-w-[320px] flex-1 flex-col gap-1">
+            <span className="flex justify-between text-xs text-muted">
+              <span>
+                <span className="text-fg/80">点子</span> Idea · 拆成可验证论断 + 已知真假的金丝雀论断
+              </span>
+              <span className={`tabular-nums ${idea.length >= IDEA_MAX ? "text-warn" : ""}`}>
+                {idea.length}/{IDEA_MAX}
+              </span>
+            </span>
+            <textarea
+              value={idea}
+              maxLength={IDEA_MAX}
+              rows={2}
+              onChange={(e) => setIdea(e.target.value.slice(0, IDEA_MAX))}
+              placeholder="例如：用 AI 客服替小餐馆自动回复点评，三个月内能收回成本吗？"
+              className={`${inputClass} resize-y leading-snug`}
+            />
+          </label>
+          <div className="flex flex-col gap-2 pt-5">
+            <Field label="论断 claims">
+              <NumberInput value={claims} onChange={setClaims} limits={LIMITS.claims} disabled={false} />
+            </Field>
+            <Field label="金丝雀 canaries">
+              <NumberInput value={canaries} onChange={setCanaries} limits={LIMITS.canaries} disabled={false} />
+            </Field>
+          </div>
+        </div>
       )}
     </div>
-  );
-}
-
-interface Provider {
-  name: string;
-  ok: boolean | undefined;
-  model: string | undefined;
-}
-
-function Field({ label, provider, children }: { label: string; provider?: Provider; children: ReactNode }) {
-  const title = provider
-    ? `${provider.name} ${provider.ok === undefined ? "未知 unknown" : provider.ok ? "就绪 ready" : "无密钥 no key"}${provider.model ? ` · ${provider.model}` : ""}`
-    : undefined;
-  return (
-    <label className="flex shrink-0 items-center gap-2" title={title}>
-      {provider && (
-        <span
-          aria-label={title}
-          className={`size-2 ${provider.ok === undefined ? "bg-muted" : provider.ok ? "bg-ok" : "bg-danger"}`}
-        />
-      )}
-      <span className="text-xs text-muted">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-const inputClass =
-  "border border-grid bg-panel-2 px-2 py-1 text-fg tabular-nums outline-none focus:border-accent disabled:opacity-40";
-
-function NumberInput(props: {
-  value: string;
-  onChange: (v: string) => void;
-  limits: readonly [number, number];
-  disabled: boolean;
-}) {
-  return (
-    <input
-      type="number"
-      inputMode="numeric"
-      min={props.limits[0]}
-      max={props.limits[1]}
-      value={props.value}
-      disabled={props.disabled}
-      onChange={(e) => props.onChange(e.target.value)}
-      className={`${inputClass} w-16`}
-    />
-  );
-}
-
-function Select<T extends string>(props: {
-  value: T;
-  options: readonly T[];
-  onChange: (v: T) => void;
-  disabled: boolean;
-}) {
-  return (
-    <select
-      value={props.value}
-      disabled={props.disabled}
-      onChange={(e) => {
-        const next = props.options.find((o) => o === e.target.value);
-        if (next) props.onChange(next);
-      }}
-      className={inputClass}
-    >
-      {props.options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-const BUTTON_TONE = {
-  plain: "border-grid text-fg hover:border-fg",
-  accent: "border-accent text-accent hover:bg-accent hover:text-bg",
-  danger: "border-danger/70 text-danger hover:bg-danger hover:text-bg",
-} as const;
-
-function Button(props: { onClick: () => void; disabled: boolean; tone?: keyof typeof BUTTON_TONE; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={props.onClick}
-      disabled={props.disabled}
-      className={`border px-3 py-1.5 font-display text-[15px] tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent ${
-        BUTTON_TONE[props.tone ?? "plain"]
-      }`}
-    >
-      {props.children}
-    </button>
   );
 }
