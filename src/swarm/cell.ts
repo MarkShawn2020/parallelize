@@ -116,7 +116,7 @@ export function buildClaimState(cell: Cell): string {
 
 const needsVerification = (v: TaskView): boolean => v.status === "verifying" || v.proposers.length > 0;
 
-export type ClaimRule = "echo" | "verifying" | "domain";
+export type ClaimRule = "echo" | "orphan" | "verifying" | "domain";
 
 export interface RuleClaimContext {
   model: string;
@@ -125,18 +125,22 @@ export interface RuleClaimContext {
   rate: (domain: Domain) => number;
   /** Tasks this cell was asked to look at (echo targets): always first. */
   preferred: ReadonlySet<string>;
+  /** Open tasks whose holder died or was quarantined: next, so orphaned work is picked up in seconds, not at the end. */
+  orphans?: ReadonlySet<string>;
   /** Per-cell seed, so ties do not herd every cell onto the same task. */
   seed: number;
 }
 
 /**
- * Zero-token claim order: echo targets, then tasks awaiting verification (a different model than the
- * first proposer first, against correlated errors), then open tasks by this cell's domain record, then
- * fewest attempts; ties keep a per-cell shuffle.
+ * Zero-token claim order: echo targets, then orphaned tasks (a dead or quarantined holder's lease came
+ * back), then tasks awaiting verification (a different model than the first proposer first, against
+ * correlated errors), then open tasks by this cell's domain record, then fewest attempts; ties keep a
+ * per-cell shuffle.
  */
 export function ruleClaimOrder(views: readonly TaskView[], ctx: RuleClaimContext): Array<{ taskId: string; rule: ClaimRule }> {
   const tier = (v: TaskView): number => {
     if (ctx.preferred.has(v.task.id)) return 0;
+    if (ctx.orphans?.has(v.task.id)) return 0.5;
     if (!needsVerification(v)) return 3;
     const first = v.proposers[0];
     const firstModel = first === undefined ? undefined : ctx.modelOf(first);
@@ -145,7 +149,7 @@ export function ruleClaimOrder(views: readonly TaskView[], ctx: RuleClaimContext
   return seededShuffle(views, ctx.seed)
     .map((v) => ({ v, tier: tier(v), rate: ctx.rate(v.task.domain) }))
     .sort((a, b) => a.tier - b.tier || (a.tier === 3 ? b.rate - a.rate : 0) || a.v.attempts - b.v.attempts)
-    .map(({ v, tier: t }) => ({ taskId: v.task.id, rule: t === 0 ? "echo" : t === 3 ? "domain" : "verifying" }));
+    .map(({ v, tier: t }) => ({ taskId: v.task.id, rule: t === 0 ? "echo" : t === 0.5 ? "orphan" : t === 3 ? "domain" : "verifying" }));
 }
 
 export function claimQuestion(entries: readonly TaskView[]): Question {

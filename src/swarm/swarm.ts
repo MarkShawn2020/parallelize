@@ -137,6 +137,7 @@ const IDLE_MS = 150;
 const RACE_BACKOFF_MS = 50;
 const ERROR_BACKOFF_MS = 500;
 const ECHO_SOLVES = 2;
+const ECHO_AUTO_CELLS = 3;
 // Named echo cells get the task to themselves for a while, so the echo shows up on stage within seconds.
 const ECHO_RESERVE_MS = 5000;
 // An unanswered echo task waits this long for a named cell to come free before anyone may answer it.
@@ -212,6 +213,8 @@ export class Swarm {
   private readonly echo = new Map<string, EchoMark>();
   /** taskId -> solves that copied an injected echo. They are not independent attempts, so they leave MAX_ATTEMPTS to clean solvers. */
   private readonly echoCopies = new Map<string, number>();
+  /** Open tasks handed back by a dead or quarantined holder; claimed before fresh work. */
+  private readonly orphans = new Set<string>();
   /** proposalId -> gene the solver used, credited once the task is accepted. */
   private readonly proposalGene = new Map<string, string>();
   private readonly genes = new Map<string, GeneInfo>();
@@ -340,9 +343,12 @@ export class Swarm {
 
   /**
    * Forces false consensus on one task. With cellIds, exactly those cells see the first proposal (and
-   * get the task reserved for a few seconds); without, the next two solvers do.
+   * get the task reserved for a few seconds); without, three honest working cells are picked the same
+   * way, and only before any cell is working do the next two solvers see it.
    */
-  injectEcho(taskId?: string, cellIds: string[] = []): string {
+  injectEcho(taskId?: string, named: string[] = []): string {
+    // Unreserved, an echo on an open task can sit unclaimed for a minute; picked cells get it within seconds.
+    const cellIds = named.length > 0 ? named : this.autoEchoCells();
     for (const id of cellIds) {
       const c = this.cells.get(id);
       if (!c) throw new Error(`unknown cell ${id}`);
@@ -366,6 +372,14 @@ export class Swarm {
     const who = targets.length > 0 ? targets.join(", ") : `the next ${ECHO_SOLVES} solvers`;
     this.log("info", first ? `echo injected on ${id}: ${who} see ${first.cellId}'s answer` : `echo injected on ${id}: once it has a proposal, ${who} see it`);
     return id;
+  }
+
+  private autoEchoCells(): string[] {
+    const honest = this.workingCells().filter((c) => !c.compromised);
+    if (honest.length < 2) return [];
+    return seededShuffle(honest, hashString(`${this.runId}|echo|${this.seq++}`))
+      .slice(0, ECHO_AUTO_CELLS)
+      .map((c) => c.id);
   }
 
   /** Plug-and-play: a new cell with its own model joins the running swarm, announces itself and starts claiming. */
@@ -563,9 +577,11 @@ export class Swarm {
   private sweep(): void {
     const holders = new Map<string, string>();
     for (const e of this.board.all()) if (e.claimedBy !== undefined) holders.set(e.task.id, e.claimedBy);
+    for (const id of this.orphans) if (this.board.get(id)?.status !== "open") this.orphans.delete(id);
     for (const taskId of this.board.sweep(this.now())) {
       this.counters.reopened++;
       const previousCell = holders.get(taskId);
+      if (this.board.get(taskId)?.status === "open") this.orphans.add(taskId);
       this.emit(previousCell ? { type: "task.reopened", taskId, previousCell } : { type: "task.reopened", taskId });
     }
   }
@@ -731,6 +747,7 @@ export class Swarm {
       modelOf: (id) => this.cells.get(id)?.model,
       rate: (d) => cell.rate(d),
       preferred,
+      orphans: this.orphans,
       seed: hashString(`${this.runId}|${cell.id}|${cell.ticks++}`),
     });
   }
@@ -1064,6 +1081,7 @@ export class Swarm {
     for (const e of this.board.all()) {
       if (e.claimedBy !== cell.id || isTerminal(e)) continue;
       this.board.release(e.task.id, cell.id);
+      if (this.board.get(e.task.id)?.status === "open") this.orphans.add(e.task.id);
       this.counters.reopened++;
       this.emit({ type: "task.reopened", taskId: e.task.id, previousCell: cell.id });
     }

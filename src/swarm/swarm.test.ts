@@ -259,6 +259,18 @@ describe("Swarm", () => {
     expect(ofType("echo.detected").some((e) => e.taskId === taskId)).toBe(true);
   });
 
+  it("picks three honest cells itself when none are named mid-run, so the alarm still shows", async () => {
+    const { swarm, ofType } = makeSwarm({ n: 12, cells: 5, solveDelayMs: 20 });
+    const run = swarm.start();
+    await waitFor(() => ofType("task.claimed").length >= 5);
+    const taskId = swarm.injectEcho();
+    await run;
+    const copiers = new Set(ofType("task.proposed").filter((e) => e.taskId === taskId && e.sawProposals.length > 0).map((e) => e.cellId));
+    expect(copiers.size).toBeGreaterThan(0);
+    expect(copiers.size).toBeLessThanOrEqual(3);
+    expect(ofType("echo.detected").some((e) => e.taskId === taskId)).toBe(true);
+  });
+
   it("never lets named echo copies use up the attempts and force a one-source accept", async () => {
     const { swarm, ofType, bus } = makeSwarm({ n: 6, cells: 5, verifyNoul: 0.9, solveDelayMs: 30 });
     let echoed: { taskId: string; proposer: string } | undefined;
