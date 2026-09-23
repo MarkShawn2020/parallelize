@@ -1,0 +1,254 @@
+{
+  "seeds": [
+    7,
+    11
+  ],
+  "tasksPerRun": 96,
+  "judges": [
+    "规则",
+    "Jev",
+    "Haiku 4.5",
+    "Sonnet 5",
+    "Opus 5"
+  ],
+  "executors": [
+    "Haiku 4.5",
+    "Sonnet 5"
+  ],
+  "cells": [
+    {
+      "executor": "Haiku 4.5",
+      "judge": "规则",
+      "runIds": [
+        "swarm-rules-20260923-152617-a404",
+        "swarm-rules-20260924-021956-fc83"
+      ],
+      "correct": 171,
+      "n": 192,
+      "costUsd": 0.162,
+      "wallS": 48.6,
+      "judgeCalls": 0,
+      "judgeUsd": 0,
+      "solveCalls": 115.5,
+      "geneCalls": 36.5
+    },
+    {
+      "executor": "Haiku 4.5",
+      "judge": "Jev",
+      "runIds": [
+        "swarm-jev-20260923-221611-f243",
+        "swarm-jev-20260923-221953-3028"
+      ],
+      "correct": 176,
+      "n": 192,
+      "costUsd": 0.3127,
+      "wallS": 118.6,
+      "judgeCalls": 162.5,
+      "judgeUsd": 0.00306,
+      "solveCalls": 199,
+      "geneCalls": 181
+    },
+    {
+      "executor": "Haiku 4.5",
+      "judge": "Haiku 4.5",
+      "runIds": [
+        "swarm-llm-20260923-152436-632f",
+        "swarm-llm-20260924-022049-e984"
+      ],
+      "correct": 172,
+      "n": 192,
+      "costUsd": 0.3098,
+      "wallS": 103.3,
+      "judgeCalls": 151.5,
+      "judgeUsd": 0.08049,
+      "solveCalls": 155.5,
+      "geneCalls": 105.5
+    },
+    {
+      "executor": "Haiku 4.5",
+      "judge": "Sonnet 5",
+      "runIds": [
+        "swarm-llm-20260924-012542-68fa",
+        "swarm-llm-20260924-022235-f669"
+      ],
+      "correct": 178,
+      "n": 192,
+      "costUsd": 0.5648,
+      "wallS": 130,
+      "judgeCalls": 154.5,
+      "judgeUsd": 0.36529,
+      "solveCalls": 140.5,
+      "geneCalls": 66
+    },
+    {
+      "executor": "Haiku 4.5",
+      "judge": "Opus 5",
+      "runIds": [
+        "swarm-llm-20260924-013902-1169",
+        "swarm-llm-20260924-022442-de7b"
+      ],
+      "correct": 178,
+      "n": 192,
+      "costUsd": 0.7098,
+      "wallS": 133.2,
+      "judgeCalls": 139.5,
+      "judgeUsd": 0.51883,
+      "solveCalls": 131,
+      "geneCalls": 59
+    },
+    {
+      "executor": "Sonnet 5",
+      "judge": "规则",
+      "runIds": [
+        "swarm-rules-20260924-015034-ab1c",
+        "swarm-rules-20260924-022637-cf72"
+      ],
+      "correct": 183,
+      "n": 192,
+      "costUsd": 0.3762,
+      "wallS": 71.4,
+      "judgeCalls": 0,
+      "judgeUsd": 0,
+      "solveCalls": 115.5,
+      "geneCalls": 32
+    },
+    {
+      "executor": "Sonnet 5",
+      "judge": "Jev",
+      "runIds": [
+        "swarm-jev-20260924-015146-705f",
+        "swarm-jev-20260924-022749-0ee4"
+      ],
+      "correct": 191,
+      "n": 192,
+      "costUsd": 0.7518,
+      "wallS": 174.1,
+      "judgeCalls": 135.5,
+      "judgeUsd": 0.0026,
+      "solveCalls": 193.5,
+      "geneCalls": 175
+    },
+    {
+      "executor": "Sonnet 5",
+      "judge": "Haiku 4.5",
+      "runIds": [
+        "swarm-llm-20260924-015425-8627",
+        "swarm-llm-20260924-023058-f69b"
+      ],
+      "correct": 185,
+      "n": 192,
+      "costUsd": 0.6327,
+      "wallS": 145.8,
+      "judgeCalls": 142,
+      "judgeUsd": 0.07768,
+      "solveCalls": 153,
+      "geneCalls": 102.5
+    },
+    {
+      "executor": "Sonnet 5",
+      "judge": "Sonnet 5",
+      "runIds": [
+        "swarm-llm-20260924-015631-c984",
+        "swarm-llm-20260924-023344-f0c0"
+      ],
+      "correct": 189,
+      "n": 192,
+      "costUsd": 0.7401,
+      "wallS": 149.8,
+      "judgeCalls": 135,
+      "judgeUsd": 0.31218,
+      "solveCalls": 129,
+      "geneCalls": 55
+    },
+    {
+      "executor": "Sonnet 5",
+      "judge": "Opus 5",
+      "runIds": [
+        "swarm-llm-20260924-015905-1b22",
+        "swarm-llm-20260924-023610-f5ad"
+      ],
+      "correct": 187,
+      "n": 192,
+      "costUsd": 0.8428,
+      "wallS": 125,
+      "judgeCalls": 131,
+      "judgeUsd": 0.45794,
+      "solveCalls": 118.5,
+      "geneCalls": 40.5
+    }
+  ],
+  "tests": [
+    {
+      "executor": "Haiku 4.5",
+      "a": "Jev",
+      "b": "规则",
+      "onlyA": 14,
+      "onlyB": 9,
+      "p": 0.4049,
+      "pHolm": 1
+    },
+    {
+      "executor": "Haiku 4.5",
+      "a": "Jev",
+      "b": "Haiku 4.5",
+      "onlyA": 12,
+      "onlyB": 8,
+      "p": 0.5034,
+      "pHolm": 1
+    },
+    {
+      "executor": "Haiku 4.5",
+      "a": "Jev",
+      "b": "Sonnet 5",
+      "onlyA": 7,
+      "onlyB": 9,
+      "p": 0.8036,
+      "pHolm": 1
+    },
+    {
+      "executor": "Haiku 4.5",
+      "a": "Jev",
+      "b": "Opus 5",
+      "onlyA": 11,
+      "onlyB": 13,
+      "p": 0.8388,
+      "pHolm": 1
+    },
+    {
+      "executor": "Sonnet 5",
+      "a": "Jev",
+      "b": "规则",
+      "onlyA": 8,
+      "onlyB": 0,
+      "p": 0.0078,
+      "pHolm": 0.0313
+    },
+    {
+      "executor": "Sonnet 5",
+      "a": "Jev",
+      "b": "Haiku 4.5",
+      "onlyA": 6,
+      "onlyB": 0,
+      "p": 0.0313,
+      "pHolm": 0.0938
+    },
+    {
+      "executor": "Sonnet 5",
+      "a": "Jev",
+      "b": "Sonnet 5",
+      "onlyA": 2,
+      "onlyB": 0,
+      "p": 0.5,
+      "pHolm": 0.5
+    },
+    {
+      "executor": "Sonnet 5",
+      "a": "Jev",
+      "b": "Opus 5",
+      "onlyA": 4,
+      "onlyB": 0,
+      "p": 0.125,
+      "pHolm": 0.25
+    }
+  ]
+}

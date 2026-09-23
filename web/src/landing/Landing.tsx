@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { EVIDENCE_BOXES, EVIDENCE_FOOTNOTE, EVIDENCE_ROWS, EVIDENCE_TITLE, pct } from "../evidence";
 import { PARADIGMS, radarValues } from "../paradigms";
 import { ExamBank } from "./ExamBank";
+import { JudgeMatrix, JudgeMatrixSummary } from "./Matrix";
 import { ParadigmExplorer } from "./ParadigmExplorer";
 import { Race } from "./Race";
 import { Radar } from "./Radar";
@@ -66,31 +67,6 @@ const SHELL: ReadonlyArray<[string, string]> = [
   ["能力卡 + 协议", "15 种消息，谁找谁不写死；运行中能加入别的模型的 Agent（目前在同一进程内）"],
   ["谱系 + 独立来源", "每个答案带来源；抄来的一致只算一个出处，防虚假共识"],
   ["Gene + 信誉", "经验在邻居间传递，收不收由 Jev 判断；信誉过低自动隔离"],
-];
-
-/** Seed 7, the same 96 hard tasks, 8 cells; only the executor and the judge change. [correct, cost USD, wall s] per judge. */
-const JUDGES = ["规则", "Jev", "Haiku 4.5", "Sonnet 5", "Opus 5"] as const;
-const JUDGE_MATRIX: ReadonlyArray<[string, ReadonlyArray<readonly [number, number, number]>]> = [
-  [
-    "Haiku 4.5 做题",
-    [
-      [81, 0.154, 44],
-      [88, 0.323, 124],
-      [80, 0.31, 101],
-      [90, 0.571, 134],
-      [85, 0.731, 152],
-    ],
-  ],
-  [
-    "Sonnet 5 做题",
-    [
-      [89, 0.374, 71],
-      [95, 0.749, 159],
-      [92, 0.602, 126],
-      [93, 0.746, 154],
-      [93, 0.836, 123],
-    ],
-  ],
 ];
 
 type Status = "已上线" | "开发中" | "规划中";
@@ -160,12 +136,12 @@ function FrameworkPage() {
             </h1>
             <p className="max-w-[860px] text-xl leading-relaxed text-fg/85 md:text-2xl">
               把 Agent 系统里的判断从大模型换成 Jev 的框架：要不要复核、收不收经验、两个答案听谁的，交给 Jev；大模型专心解题。8 个 Agent 的蜂群实测：
-              <span className="text-accent">每次判断便宜约 27 倍，准确率与大模型判断打平。</span>
+              <span className="text-accent">每次判断便宜约 27 倍，准确率和大模型判断分不出高下。</span>
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Stat value="约 27×" label="每次判断的花费：Jev 约 $0.2 / 万次，Haiku 当判断者约 $5.4 / 万次；Jev 一次约半秒（实测）" tone="text-s1" />
-            <Stat value="88 · 90 · 85" label="同一批 96 道困难题、Haiku 4.5 做题，只换判断者：Jev 88、Sonnet 5 90、Opus 5 85，配对检验分不出高下" />
+            <Stat value="176 · 178 · 178" label="两个种子共 192 道困难题、Haiku 4.5 做题，只换判断者：Jev 176、Sonnet 5 178、Opus 5 178，配对检验分不出高下" />
             <Stat value="34 : 9" label="两批共 288 题按题配对：只有 JIS 蜂群答对 34 题，只有每题各做各的答对 9 题（p = 0.00017）" />
           </div>
           <div className="flex flex-wrap gap-3">
@@ -239,40 +215,10 @@ function FrameworkPage() {
       <Section
         id="judges"
         eyebrow="只换判断者"
-        title="判断换成 Jev，准确率没有掉"
-        lead="同一个 8 Agent 蜂群、同一批 96 道困难题，只换两样：谁做题，谁判断。10 格是 10 次真实运行。"
+        title="判断换成 Jev，准确率分不出高下"
+        lead="同一个 8 Agent 蜂群、同一套困难题，只换两样：谁做题，谁判断。"
       >
-        <div className="overflow-x-auto border border-grid bg-panel/90 p-5">
-          <div className="grid min-w-[520px] grid-cols-[80px_repeat(5,minmax(0,1fr))] gap-2 md:min-w-[760px] md:grid-cols-[150px_repeat(5,minmax(0,1fr))]">
-            <span className="self-end text-sm text-muted">做题 \ 判断</span>
-            {JUDGES.map((j) => (
-              <span key={j} className={`text-center text-sm font-semibold ${j === "Jev" ? "text-s1" : "text-fg/85"}`}>
-                {j}
-              </span>
-            ))}
-            {JUDGE_MATRIX.map(([row, cells]) => (
-              <div key={row} className="contents">
-                <span className="self-center text-base font-semibold text-fg">{row}</span>
-                {cells.map(([correct, usd, wall], i) => (
-                  <div
-                    key={JUDGES[i]}
-                    className={`flex flex-col items-center gap-0.5 border px-2 py-3 ${JUDGES[i] === "Jev" ? "border-s1 bg-s1/10" : "border-grid bg-bg"}`}
-                  >
-                    <span className={`font-mono text-3xl font-bold tabular-nums ${JUDGES[i] === "Jev" ? "text-s1" : "text-fg"}`}>{correct}</span>
-                    <span className="font-mono text-xs text-muted tabular-nums">${usd.toFixed(2)}</span>
-                    <span className="font-mono text-xs text-muted tabular-nums">{wall} 秒</span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-        <ul className="flex flex-col gap-1.5 text-sm leading-relaxed text-fg/80">
-          <li>配对检验：两种做题模型下，Jev 与 Sonnet 5、Opus 5 判断都分不出高下；Haiku 做题时，Jev 比 Haiku 自己判多对 8 题（10 : 2，p = 0.039，单次运行、未做多重比较校正）。</li>
-          <li>Jev 判断一轮约 $0.003；Haiku 做题时整轮 $0.32，Sonnet 5 判断 $0.57。换 Sonnet 5 做题后，做题本身变贵，两者整轮花费持平。</li>
-          <li>分数来自更多独立复核：判断便宜，蜂群就对更多答案再做一遍（Haiku 做题时复核 108 次，Sonnet 5 判断时 48 次）。</li>
-        </ul>
-        <p className="text-xs text-muted">seed 7 · 每格一次真实运行（2026-09-23/24）· 答对题数 / 96 · 原始记录在仓库 runs/</p>
+        <JudgeMatrixSummary href={`${COMPARE_ROUTE}/matrix`} />
       </Section>
 
       <Section id="usage" eyebrow="怎么用" title="现在能用的，和接下来要接的">
@@ -296,7 +242,7 @@ function FrameworkPage() {
       >
         <div className="grid gap-3 md:grid-cols-3">
           <Stat value="$5.4 → $0.2" label="每 1 万次判断：Haiku 当判断者 → Jev（主对照实测，约 27 倍）" tone="text-s1" />
-          <Stat value="$0.32 对 $0.57" label="Haiku 做题时，判断交给 Jev 与交给 Sonnet 5 准确率打平（88 对 90，p = 0.69），整轮便宜 43%" />
+          <Stat value="$0.31 对 $0.56" label="Haiku 做题时，判断交给 Jev 与交给 Sonnet 5 准确率分不出高下（两个种子 192 题：176 对 178，p = 0.80），整轮便宜 45%" />
           <Stat value="0 token" label="领题、租约、合并、回声检测、隔离全是规则，不调用模型" tone="text-fg" />
         </div>
         <div className="grid gap-3 md:grid-cols-3">
@@ -339,6 +285,15 @@ function ComparePage({ onRaceReady, onOpenBank }: { onRaceReady: () => void; onO
       <div className="mx-auto max-w-[1200px] px-4 py-10">
         <Race onReady={onRaceReady} />
       </div>
+
+      <Section
+        id="matrix"
+        eyebrow="谁来判断 · 执行者 × 判断者"
+        title="同一个蜂群，只换谁做题、谁来判断"
+        lead="两种执行者 × 五种判断者：执行者负责做题和写经验，判断者决定要不要复核、收不收经验、算不算真分歧。每一格都是真实运行。"
+      >
+        <JudgeMatrix />
+      </Section>
 
       <Section
         id="exam"

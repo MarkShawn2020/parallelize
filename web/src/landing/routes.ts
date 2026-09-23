@@ -14,6 +14,7 @@ export const PAGES: ReadonlyArray<[Page, string, string]> = [
 ];
 
 export const COMPARE_SECTIONS: ReadonlyArray<[string, string]> = [
+  ["matrix", "谁来判断"],
   ["exam", "考卷"],
   ["paradigms", "七种范式"],
   ["data", "数据报告"],
