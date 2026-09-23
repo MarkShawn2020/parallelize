@@ -55,6 +55,7 @@ const MODEL_ID = /^[a-z0-9._~/:-]+$/i;
 const MAX_IDEA_CHARS = 500;
 const CLAIMS = { min: 3, max: 10 };
 const CANARIES = { min: 0, max: 6 };
+const DIFFICULTIES = ["normal", "hard"] as const;
 
 type NumericKey = {
   [K in keyof RunConfig]: RunConfig[K] extends number ? K : never;
@@ -137,7 +138,9 @@ function researchSource(raw: Record<string, unknown>): TaskSourceConfig {
 function taskSource(raw: unknown): TaskSourceConfig {
   if (!isRecord(raw)) throw new Error("taskSource must be an object");
   const kind = oneOf("taskSource.kind", raw.kind, ["synthetic", "gsm8k", "research"] as const);
-  if (kind === "synthetic") return { kind };
+  if (kind === "synthetic") {
+    return raw.difficulty === undefined ? { kind } : { kind, difficulty: oneOf("taskSource.difficulty", raw.difficulty, DIFFICULTIES) };
+  }
   if (kind === "gsm8k") return { kind, path: dataPath(raw.path) };
   return researchSource(raw);
 }

@@ -5,6 +5,8 @@ import { Gsm8kTaskSource, ResearchTaskSource, SyntheticTaskSource, createTaskSou
 describe("createTaskSource", () => {
   it("builds the source named by the config", () => {
     expect(createTaskSource({ kind: "synthetic" })).toBeInstanceOf(SyntheticTaskSource);
+    expect(createTaskSource({ kind: "synthetic" })).toMatchObject({ difficulty: "normal" });
+    expect(createTaskSource({ kind: "synthetic", difficulty: "hard" })).toMatchObject({ difficulty: "hard" });
     expect(createTaskSource({ kind: "gsm8k", path: "data/gsm8k.jsonl" })).toBeInstanceOf(Gsm8kTaskSource);
   });
 

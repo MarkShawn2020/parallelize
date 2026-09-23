@@ -1,8 +1,11 @@
 import { mulberry32 } from "../core/rng";
-import type { Domain, Task, TaskSource } from "../core/types";
+import type { Domain, Task, TaskSource, TaskSourceConfig } from "../core/types";
+import { HARD_TEMPLATES } from "./synthetic-hard";
 
 export type SyntheticDomain = Exclude<Domain, "gsm8k" | "research">;
 export const SYNTHETIC_DOMAINS: readonly SyntheticDomain[] = ["arithmetic", "rates", "logic"];
+export type SyntheticDifficulty = NonNullable<Extract<TaskSourceConfig, { kind: "synthetic" }>["difficulty"]>;
+export const SYNTHETIC_DIFFICULTIES: readonly SyntheticDifficulty[] = ["normal", "hard"];
 
 export interface Rng {
   /** Uniform integer in [lo, hi]. */
@@ -581,22 +584,33 @@ export function leaksAnswer(prompt: string, answer: number): boolean {
   return new RegExp(`(?<![\\d.,])${answer}(?![\\d]|[.,]\\d)`).test(prompt);
 }
 
-function draw(r: Rng, domain: SyntheticDomain): Problem {
+const TEMPLATE_SETS: Record<SyntheticDifficulty, Record<SyntheticDomain, readonly Template[]>> = {
+  normal: TEMPLATES,
+  hard: HARD_TEMPLATES,
+};
+
+function draw(r: Rng, domain: SyntheticDomain, difficulty: SyntheticDifficulty): Problem {
   for (let i = 0; i < MAX_DRAWS; i++) {
-    const p = r.pick(TEMPLATES[domain])(r);
+    const p = r.pick(TEMPLATE_SETS[difficulty][domain])(r);
     if (Number.isSafeInteger(p.answer) && p.answer > 0 && !leaksAnswer(p.prompt, p.answer)) return p;
   }
-  throw new Error(`synthetic: no valid ${domain} problem after ${MAX_DRAWS} draws`);
+  throw new Error(`synthetic: no valid ${difficulty} ${domain} problem after ${MAX_DRAWS} draws`);
 }
 
 export class SyntheticTaskSource implements TaskSource {
+  readonly difficulty: SyntheticDifficulty;
+
+  constructor({ difficulty = "normal" }: { difficulty?: SyntheticDifficulty } = {}) {
+    this.difficulty = difficulty;
+  }
+
   async load(n: number, seed: number): Promise<Task[]> {
     if (!Number.isInteger(n) || n < 0) throw new RangeError(`task count must be a non-negative integer, got ${n}`);
     // One sequential stream: task i depends only on draws made for tasks 0..i, so load(k) is a prefix of load(n).
     const r = createRng(seed);
     return Array.from({ length: n }, (_, i) => {
       const domain = SYNTHETIC_DOMAINS[i % SYNTHETIC_DOMAINS.length]!;
-      const { prompt, answer } = draw(r, domain);
+      const { prompt, answer } = draw(r, domain, this.difficulty);
       return { id: `t${String(i + 1).padStart(3, "0")}`, domain, prompt, answer: String(answer) };
     });
   }

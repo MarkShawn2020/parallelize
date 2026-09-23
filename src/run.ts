@@ -311,6 +311,7 @@ export async function startRun(config: RunConfig, opts: StartRunOptions): Promis
             seed: config.seed + 1000 + i,
             exclude,
             ...(gsm8kPath ? { gsm8kPath } : {}),
+            ...(src.kind === "synthetic" && src.difficulty ? { difficulty: src.difficulty } : {}),
           });
           return { tasks: fresh, llm: stack.holdoutLLM(fresh) };
         },

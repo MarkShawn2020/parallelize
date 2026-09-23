@@ -153,6 +153,22 @@ describe("parseRunConfig", () => {
     expect(() => parseRunConfig({ mode: "single", taskSource: { kind: "csv" } })).toThrow(/taskSource.kind/);
     expect(parseRunConfig({ mode: "single", taskSource: { kind: "synthetic" } }).taskSource).toEqual({ kind: "synthetic" });
   });
+
+  it("accepts a synthetic difficulty and leaves it out when absent", () => {
+    expect(parseRunConfig({ mode: "single", taskSource: { kind: "synthetic", difficulty: "hard" } }).taskSource).toEqual({
+      kind: "synthetic",
+      difficulty: "hard",
+    });
+    expect(parseRunConfig({ mode: "single", taskSource: { kind: "synthetic", difficulty: "normal" } }).taskSource).toEqual({
+      kind: "synthetic",
+      difficulty: "normal",
+    });
+    expect(parseRunConfig({ mode: "single", taskSource: { kind: "synthetic" } }).taskSource).not.toHaveProperty("difficulty");
+    expect(DEFAULT_CONFIG.taskSource).toEqual({ kind: "synthetic" });
+    for (const difficulty of ["extreme", "HARD", "", 2, null]) {
+      expect(() => parseRunConfig({ mode: "single", taskSource: { kind: "synthetic", difficulty } })).toThrow(/taskSource.difficulty/);
+    }
+  });
 });
 
 describe("providerEnv", () => {

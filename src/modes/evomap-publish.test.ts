@@ -90,6 +90,14 @@ describe("freshTasks", () => {
     expect(await freshTasks({ domain: "research", count: 3, seed: 1, exclude: new Set() })).toEqual([]);
     expect(await freshTasks({ domain: "gsm8k", count: 3, seed: 1, exclude: new Set() })).toEqual([]);
   });
+
+  it("draws holdout tasks at the run's difficulty", async () => {
+    const normal = await freshTasks({ domain: "logic", count: 4, seed: 1001, exclude: new Set() });
+    const hard = await freshTasks({ domain: "logic", count: 4, seed: 1001, exclude: new Set(), difficulty: "hard" });
+    expect(hard).toHaveLength(4);
+    const words = (ts: typeof normal) => ts.reduce((n, t) => n + t.prompt.split(/\s+/).length, 0);
+    expect(words(hard)).toBeGreaterThan(words(normal));
+  });
 });
 
 describe("holdoutGate", () => {

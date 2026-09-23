@@ -16,20 +16,21 @@ interface Props {
 type Judge = RunConfig["judge"];
 type Llm = RunConfig["llm"];
 type Source = "math" | "research";
+type Difficulty = NonNullable<Extract<TaskSourceConfig, { kind: "synthetic" }>["difficulty"]>;
+
+const DIFFICULTIES: ReadonlyArray<[Difficulty, string, string]> = [
+  ["normal", "普通", "普通：3-5 步整数题 normal"],
+  ["hard", "困难", "困难：6-9 步，含干扰条件、单位换算与百分比 hard"],
+];
 
 const LIMITS = { n: [1, 500], cells: [1, 64], claims: [3, 10], canaries: [0, 6] } as const;
 export const IDEA_MAX = 500;
 const PUBLISH_WARNING = "会把通过验证门的 Gene 公开发布到 EvoMap";
 
-function mathSource(defaults: DefaultsResponse | null): TaskSourceConfig | undefined {
-  const d = defaults?.defaults.taskSource;
-  if (!d) return undefined;
-  return d.kind === "research" ? { kind: "synthetic" } : d;
-}
-
 export function ControlBar({ defaults, defaultsError, running, simulated, hasRun }: Props) {
   const [mode, setMode] = useState<Mode>("swarm-jev");
   const [source, setSource] = useState<Source>("math");
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [n, setN] = useState("40");
   const [cells, setCells] = useState("8");
   const [judge, setJudge] = useState<Judge>("mock");
@@ -67,14 +68,14 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
     setBusy(true);
     setNotice(null);
     const fallback = defaults?.defaults;
-    const taskSource: TaskSourceConfig | undefined = research
+    const taskSource: TaskSourceConfig = research
       ? {
           kind: "research",
           idea: ideaText,
           claims: clampInt(claims, LIMITS.claims, 6),
           canaries: clampInt(canaries, LIMITS.canaries, 2),
         }
-      : mathSource(defaults);
+      : { kind: "synthetic", difficulty };
     const req: StartRunRequest = {
       mode,
       cells: clampInt(cells, LIMITS.cells, fallback?.cells ?? 8),
@@ -84,7 +85,7 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
       evomapLookup,
       evomapPublish: evomapPublish && !noNode,
       ...(research ? {} : { n: clampInt(n, LIMITS.n, fallback?.n ?? 40) }),
-      ...(taskSource ? { taskSource } : {}),
+      taskSource,
     };
     try {
       const res = await startRun(req);
@@ -142,6 +143,27 @@ export function ControlBar({ defaults, defaultsError, running, simulated, hasRun
             </button>
           ))}
         </div>
+
+        {!research && (
+          <div role="radiogroup" aria-label="难度 Difficulty" className="flex shrink-0 border border-grid">
+            {DIFFICULTIES.map(([k, label, hint]) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={difficulty === k}
+                title={hint}
+                disabled={running}
+                onClick={() => setDifficulty(k)}
+                className={`px-2 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed ${
+                  difficulty === k ? "bg-s1/15 text-s1" : "text-muted enabled:hover:bg-panel-2 enabled:hover:text-fg"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <Field label="任务 n">
           <NumberInput value={n} onChange={setN} limits={LIMITS.n} disabled={running || research} />

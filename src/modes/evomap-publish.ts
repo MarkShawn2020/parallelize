@@ -82,6 +82,8 @@ export async function freshTasks(p: {
   seed: number;
   exclude: ReadonlySet<string>;
   gsm8kPath?: string;
+  /** Holdout tasks match the run's difficulty, so a gene is judged where it was learned. */
+  difficulty?: "normal" | "hard";
 }): Promise<Task[]> {
   let pool: Task[];
   if (p.domain === "gsm8k") {
@@ -91,7 +93,7 @@ export async function freshTasks(p: {
     return [];
   } else {
     // Synthetic domains rotate, so 3x the count (plus slack for excluded prompts) yields enough of one domain.
-    pool = await new SyntheticTaskSource().load(p.count * 3 + 30, p.seed);
+    pool = await new SyntheticTaskSource({ difficulty: p.difficulty ?? "normal" }).load(p.count * 3 + 30, p.seed);
   }
   return pool
     .filter((t) => t.domain === p.domain && !p.exclude.has(t.prompt))

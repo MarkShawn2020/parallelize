@@ -16,7 +16,7 @@ export const SWARM_MODES: readonly Mode[] = ["swarm-llm", "swarm-jev", "swarm-ru
 export type Domain = "arithmetic" | "rates" | "logic" | "gsm8k" | "research";
 
 export type TaskSourceConfig =
-  | { kind: "synthetic" }
+  | { kind: "synthetic"; difficulty?: "normal" | "hard" }
   | { kind: "gsm8k"; path: string }
   /** An idea decomposed by an LLM planner into verifiable claims, plus canary claims of known truth. */
   | { kind: "research"; idea: string; claims: number; canaries: number };

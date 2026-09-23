@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { SYNTHETIC_DOMAINS, SyntheticTaskSource, TEMPLATES, createRng, leaksAnswer } from "./synthetic";
+import { hashString } from "../core/rng";
+import { SYNTHETIC_DIFFICULTIES, SYNTHETIC_DOMAINS, SyntheticTaskSource, TEMPLATES, createRng, leaksAnswer } from "./synthetic";
 
 const source = new SyntheticTaskSource();
 
@@ -50,6 +51,50 @@ describe("SyntheticTaskSource", () => {
   it("rejects an invalid task count", async () => {
     await expect(source.load(-1, 1)).rejects.toThrow(RangeError);
     await expect(source.load(2.5, 1)).rejects.toThrow(RangeError);
+  });
+});
+
+describe("SyntheticTaskSource difficulty", () => {
+  const hard = new SyntheticTaskSource({ difficulty: "hard" });
+
+  it("defaults to normal and keeps normal tasks byte-identical", async () => {
+    expect(SYNTHETIC_DIFFICULTIES).toEqual(["normal", "hard"]);
+    expect(source.difficulty).toBe("normal");
+    expect(await new SyntheticTaskSource({ difficulty: "normal" }).load(90, 7)).toEqual(await source.load(90, 7));
+    // Hashes taken before the difficulty option existed, so saved runs and configs keep meaning the same tasks.
+    expect(hashString(JSON.stringify(await source.load(90, 7)))).toBe(3893239134);
+    expect(hashString(JSON.stringify(await source.load(90, 2026)))).toBe(861421207);
+  });
+
+  it("is deterministic, prefix-stable and different from normal for the same seed", async () => {
+    const long = await hard.load(60, 42);
+    expect(await hard.load(60, 42)).toEqual(long);
+    for (const k of [0, 1, 7, 33]) expect(await hard.load(k, 42)).toEqual(long.slice(0, k));
+    const normal = await source.load(60, 42);
+    expect(long.map((t) => t.id)).toEqual(normal.map((t) => t.id));
+    expect(long.map((t) => t.domain)).toEqual(normal.map((t) => t.domain));
+    expect(long.every((t, i) => t.prompt !== normal[i]?.prompt)).toBe(true);
+    expect((await hard.load(12, 1)).map((t) => t.prompt)).not.toEqual((await hard.load(12, 2)).map((t) => t.prompt));
+  });
+
+  it("gives hard tasks positive integer answers that never appear as a number in the prompt", async () => {
+    for (const seed of [0, 1, 99, 2026]) {
+      for (const task of await hard.load(150, seed)) {
+        expect(task.answer).toMatch(/^[1-9]\d*$/);
+        expect(standaloneNumbers(task.prompt)).not.toContain(task.answer);
+        expect(task.prompt.endsWith("?")).toBe(true);
+      }
+    }
+  });
+
+  it("makes hard prompts about twice as long, with more numbers to sort through", async () => {
+    const [normal, tough] = await Promise.all([source.load(120, 1), hard.load(120, 1)]);
+    const mean = (tasks: typeof normal, f: (p: string) => number) => tasks.reduce((s, t) => s + f(t.prompt), 0) / tasks.length;
+    const words = (p: string) => p.split(/\s+/).length;
+    const numbers = (p: string) => standaloneNumbers(p).length;
+    expect(mean(tough, words)).toBeGreaterThan(1.6 * mean(normal, words));
+    expect(mean(tough, numbers)).toBeGreaterThan(1.8 * mean(normal, numbers));
+    expect(Math.min(...tough.map((t) => numbers(t.prompt)))).toBeGreaterThanOrEqual(6);
   });
 });
 

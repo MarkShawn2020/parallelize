@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../config";
 import type { LiveMetrics, RunSummary } from "../core/types";
-import { BENCH_ORDER, buildPlan, formatTable } from "./bench";
+import { BENCH_ORDER, buildPlan, difficultyOf, formatTable } from "./bench";
 
 describe("buildPlan", () => {
   it("expands --mode all into all seven modes, swarm-jev first, on identical settings", () => {
@@ -46,6 +46,24 @@ describe("buildPlan", () => {
     expect(() => buildPlan({ claims: "4" })).toThrow(/--research/);
     expect(() => buildPlan({ research: "x", source: "gsm8k", path: "p" })).toThrow(/exclusive/);
     expect(() => buildPlan({ "cell-models": "bad model!" })).toThrow(/cellModels/);
+  });
+
+  it("applies --difficulty to synthetic runs and records it in the config and labels", () => {
+    const hard = buildPlan({ mode: "single,swarm-jev", difficulty: "hard", llm: "mock" });
+    expect(hard.map((r) => r.label)).toEqual(["swarm-jev/hard", "single/hard"]);
+    for (const r of hard) {
+      expect(r.config.taskSource).toEqual({ kind: "synthetic", difficulty: "hard" });
+      expect(difficultyOf(r.config)).toBe("hard");
+    }
+    expect(buildPlan({ inherit: true, difficulty: "hard" }).map((r) => r.label)).toEqual(["swarm-jev/cold/hard", "swarm-jev/warm/hard"]);
+    // The default keeps the old labels and writes the difficulty down explicitly.
+    const [normal] = buildPlan({ mode: "single" });
+    expect(normal).toMatchObject({ label: "single", config: { taskSource: { kind: "synthetic", difficulty: "normal" } } });
+    expect(difficultyOf({ ...DEFAULT_CONFIG, taskSource: { kind: "synthetic" } })).toBe("normal");
+    expect(difficultyOf({ ...DEFAULT_CONFIG, taskSource: { kind: "gsm8k", path: "x.jsonl" } })).toBeUndefined();
+    expect(() => buildPlan({ difficulty: "extreme" })).toThrow(/--difficulty must be normal or hard/);
+    expect(() => buildPlan({ difficulty: "hard", source: "gsm8k", path: "p" })).toThrow(/synthetic tasks only/);
+    expect(() => buildPlan({ difficulty: "hard", research: "x" })).toThrow(/synthetic tasks only/);
   });
 
   it("lets the local CLI load a gsm8k file from any path", () => {

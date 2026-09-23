@@ -12,14 +12,15 @@ import { startRun } from "../run";
 export const BENCH_ORDER: readonly Mode[] = ["swarm-jev", "single", "single-vote", "subagent", "swarm-llm", "swarm-rules", "swarm-solo"];
 
 const USAGE = `usage: pnpm bench [--mode <mode[,mode...]|all>] [--n 64] [--cells 8] [--seed 7] [--judge jev|mock] [--llm openrouter|mock]
-                  [--source synthetic|gsm8k] [--path file.jsonl] [--max-cost 2] [--vote-budget <tokens>]
+                  [--source synthetic|gsm8k] [--difficulty normal|hard] [--path file.jsonl] [--max-cost 2] [--vote-budget <tokens>]
                   [--inherit] [--library-dir <dir>] [--evomap-lookup] [--cell-models a,b]
                   [--research "<idea>" [--claims 6] [--canaries 2]]
 modes: ${MODES.join(", ")}
---inherit runs one swarm mode (default swarm-jev) twice: cold on --seed with an empty library, warm on --seed+1 inheriting it.`;
+--inherit runs one swarm mode (default swarm-jev) twice: cold on --seed with an empty library, warm on --seed+1 inheriting it.
+--difficulty hard (synthetic only): 6-9 step problems with distractor facts and unit conversions; run labels get a /hard suffix.`;
 
 const COLUMNS: Array<[string, number]> = [
-  ["run", 16],
+  ["run", 20],
   ["sim", 4],
   ["accuracy", 8],
   ["correct/n", 9],
@@ -37,6 +38,7 @@ const COLUMNS: Array<[string, number]> = [
 ];
 
 export type BenchArgs = Record<string, string | boolean | undefined>;
+type Difficulty = "normal" | "hard";
 
 export interface BenchRun {
   label: string;
@@ -63,6 +65,11 @@ function num(values: BenchArgs, name: string): number | undefined {
   return v;
 }
 
+/** The synthetic difficulty a run used, or undefined for gsm8k and research runs. */
+export function difficultyOf(config: RunConfig): Difficulty | undefined {
+  return config.taskSource.kind === "synthetic" ? (config.taskSource.difficulty ?? "normal") : undefined;
+}
+
 function parseModes(raw: string): Mode[] {
   if (raw === "all") return [...BENCH_ORDER];
   const picked = raw.split(",").map((m) => m.trim());
@@ -78,6 +85,12 @@ export function buildPlan(values: BenchArgs): BenchRun[] {
   const idea = text(values, "research");
   if (idea !== undefined && source === "gsm8k") throw new Error("--research and --source gsm8k are exclusive");
   if (idea === undefined && (values.claims !== undefined || values.canaries !== undefined)) throw new Error("--claims/--canaries need --research");
+  const difficultyArg = text(values, "difficulty");
+  if (difficultyArg !== undefined && difficultyArg !== "normal" && difficultyArg !== "hard") throw new Error("--difficulty must be normal or hard");
+  if (difficultyArg !== undefined && (source !== "synthetic" || idea !== undefined)) throw new Error("--difficulty applies to synthetic tasks only");
+  const difficulty: Difficulty = difficultyArg ?? "normal";
+  // Normal labels stay as they were, so earlier compare files line up with new ones.
+  const suffix = difficulty === "hard" ? "/hard" : "";
   const models = text(values, "cell-models");
   const voteBudget = num(values, "vote-budget");
   const inherit = values.inherit === true;
@@ -96,7 +109,12 @@ export function buildPlan(values: BenchArgs): BenchRun[] {
       inherit,
       evomapLookup: values["evomap-lookup"] === true,
       cellModels: models === undefined ? undefined : models.split(",").map((m) => m.trim()).filter(Boolean),
-      taskSource: idea === undefined ? undefined : { kind: "research", idea, claims: num(values, "claims"), canaries: num(values, "canaries") },
+      taskSource:
+        idea !== undefined
+          ? { kind: "research", idea, claims: num(values, "claims"), canaries: num(values, "canaries") }
+          : source === "synthetic"
+            ? { kind: "synthetic", difficulty }
+            : undefined,
     });
     // The CLI is local and trusted, so --path may point anywhere (the server restricts it to data/).
     if (source === "gsm8k" && path) cfg.taskSource = { kind: "gsm8k", path: resolve(path) };
@@ -108,13 +126,13 @@ export function buildPlan(values: BenchArgs): BenchRun[] {
     const mode = MODES.find((m) => m === modeArg);
     if (mode === undefined || !SWARM_MODES.includes(mode)) throw new Error(`--inherit needs one swarm mode (${SWARM_MODES.join(", ")})`);
     return [
-      { label: `${mode}/cold`, config: configFor(mode), budgetFromSwarm: false },
-      { label: `${mode}/warm`, config: configFor(mode, 1), budgetFromSwarm: false },
+      { label: `${mode}/cold${suffix}`, config: configFor(mode), budgetFromSwarm: false },
+      { label: `${mode}/warm${suffix}`, config: configFor(mode, 1), budgetFromSwarm: false },
     ];
   }
   const modes = parseModes(text(values, "mode") ?? "all");
   return modes.map((mode) => ({
-    label: mode,
+    label: `${mode}${suffix}`,
     config: configFor(mode),
     budgetFromSwarm: mode === "single-vote" && voteBudget === undefined && modes.includes("swarm-jev"),
   }));
@@ -169,6 +187,7 @@ async function main(): Promise<number> {
       judge: { type: "string" },
       llm: { type: "string" },
       source: { type: "string" },
+      difficulty: { type: "string" },
       path: { type: "string" },
       "max-cost": { type: "string" },
       "vote-budget": { type: "string" },
@@ -200,7 +219,9 @@ async function main(): Promise<number> {
   for (const run of plan) {
     const config = run.budgetFromSwarm && swarmTokens !== undefined ? { ...run.config, voteBudgetTokens: swarmTokens } : run.config;
     const budget = config.mode === "single-vote" ? `, vote budget=${config.voteBudgetTokens || "fixed k"}` : "";
-    process.stderr.write(`running ${run.label} (n=${config.n}, cells=${config.cells}, seed=${config.seed}, llm=${config.llm}, judge=${config.judge}${budget}) ... `);
+    const difficulty = difficultyOf(config);
+    const level = difficulty === undefined ? "" : `, difficulty=${difficulty}`;
+    process.stderr.write(`running ${run.label} (n=${config.n}, cells=${config.cells}, seed=${config.seed}, llm=${config.llm}, judge=${config.judge}${level}${budget}) ... `);
     const bus = new SimpleEventBus();
     bus.on((e) => {
       if (e.type === "research.report") reports[e.runId] = e.report;
@@ -215,7 +236,8 @@ async function main(): Promise<number> {
   console.log(formatTable(results));
   const out = join(RUNS_DIR, `compare-${stamp(new Date())}.json`);
   const runs = results.map(({ label, summary }) => ({ label, ...summary }));
-  await writeFile(out, `${JSON.stringify({ createdAt: Date.now(), args, libraryDir, runs, reports }, null, 2)}\n`);
+  const difficulty = plan[0] === undefined ? undefined : difficultyOf(plan[0].config);
+  await writeFile(out, `${JSON.stringify({ createdAt: Date.now(), args, difficulty, libraryDir, runs, reports }, null, 2)}\n`);
   console.log(`\nwrote ${out}`);
   return results.some((r) => r.summary.aborted?.startsWith("error")) ? 1 : 0;
 }

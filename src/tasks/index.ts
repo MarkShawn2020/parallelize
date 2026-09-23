@@ -19,7 +19,7 @@ export { SyntheticTaskSource } from "./synthetic";
 export function createTaskSource(cfg: TaskSourceConfig, planner?: { llm: LLM; runId: string }): TaskSource {
   switch (cfg.kind) {
     case "synthetic":
-      return new SyntheticTaskSource();
+      return new SyntheticTaskSource({ difficulty: cfg.difficulty });
     case "gsm8k":
       return new Gsm8kTaskSource(cfg.path);
     case "research":
