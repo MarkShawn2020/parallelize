@@ -27,6 +27,7 @@ import { EvidencePage } from "./stage/EvidencePage";
 import { ResearchPage } from "./stage/ResearchPage";
 import { StageHeader, type StagePage } from "./stage/StageHeader";
 import { StageLive } from "./stage/StageLive";
+import { Landing } from "./landing/Landing";
 import { useRunStream, type ConnectionStatus } from "./useRunStream";
 import { initialRunView } from "./state";
 import { useSavedReport } from "./useSavedReport";
@@ -37,9 +38,21 @@ const GRAPH_HEIGHT = 400;
 const STAGE_ROOT_FONT = "clamp(16px, min(1.05vw, 1.78vh), 20px)";
 const STAGE_PAGES: Record<string, StagePage> = { "1": "live", "2": "evidence", "3": "research" };
 
-type ViewMode = "stage" | "eng";
+type ViewMode = "landing" | "stage" | "eng";
 
-const initialViewMode = (): ViewMode => (new URLSearchParams(window.location.search).get("view") === "eng" ? "eng" : "stage");
+// Hash routes need no server fallback: "#/live" is the stage view, "#/eng" the engineering view, anything else the landing page.
+const HASH: Record<ViewMode, string> = { landing: "#/", stage: "#/live", eng: "#/eng" };
+
+const modeFromUrl = (): ViewMode => {
+  const hash = window.location.hash;
+  if (hash.startsWith(HASH.stage)) return "stage";
+  if (hash.startsWith(HASH.eng) || new URLSearchParams(window.location.search).get("view") === "eng") return "eng";
+  return "landing";
+};
+
+const goTo = (mode: ViewMode): void => {
+  window.location.hash = HASH[mode];
+};
 
 const isTyping = (t: EventTarget | null): boolean =>
   t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA" || t.isContentEditable);
@@ -61,7 +74,7 @@ export default function App() {
   const [gene, setGene] = useState<GeneCardData | null>(null);
   const [libraryEpoch, setLibraryEpoch] = useState(0);
   const [killError, setKillError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
+  const [viewMode, setViewMode] = useState<ViewMode>(modeFromUrl);
   const [page, setPage] = useState<StagePage>("live");
   const [drawer, setDrawer] = useState(false);
   const startRef = useRef<(() => Promise<string | null>) | null>(null);
@@ -69,6 +82,15 @@ export default function App() {
     startRef.current = start;
   }, []);
   const stage = viewMode === "stage";
+  const landing = viewMode === "landing";
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+
+  useEffect(() => {
+    const onHash = () => setViewMode(modeFromUrl());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   // The server replays the last run to every new connection; between judges the presenter dismisses it to get the idle card back.
   const [dismissedRunId, setDismissedRunId] = useState<string | null>(null);
 
@@ -83,12 +105,13 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      // The landing page is a normal scrolling page: no single-key shortcuts there.
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target) || viewModeRef.current === "landing") return;
       const next = STAGE_PAGES[e.key];
-      if (e.key === "e" || e.key === "E") setViewMode((v) => (v === "stage" ? "eng" : "stage"));
+      if (e.key === "e" || e.key === "E") goTo(viewModeRef.current === "stage" ? "eng" : "stage");
       else if (e.key === "0") dismissRef.current();
       else if (next) {
-        setViewMode("stage");
+        goTo("stage");
         setPage(next);
       } else if (e.key === "Escape") setDrawer(false);
     };
@@ -174,14 +197,18 @@ export default function App() {
   ].join(":");
 
   return (
-    <div className={`mx-auto flex max-w-[1920px] flex-col gap-2 p-2 ${stage ? "h-screen" : "min-h-screen"}`}>
+    <>
+    {landing && <Landing liveRunning={running} />}
+    {/* Stays mounted behind the landing page so the run presets and dock state survive the trip. */}
+    <div className={landing ? "hidden" : `mx-auto flex max-w-[1920px] flex-col gap-2 p-2 ${stage ? "h-screen" : "min-h-screen"}`}>
       {stage ? (
         <StageHeader
           view={stageView}
           page={page}
           offline={status === "offline"}
           onPage={setPage}
-          onEngineering={() => setViewMode("eng")}
+          onEngineering={() => goTo("eng")}
+          onHome={() => goTo("landing")}
           onStandby={() => dismissRef.current()}
         />
       ) : (
@@ -213,7 +240,7 @@ export default function App() {
             <span className={`size-2.5 rounded-full ${conn.dot}`} />
             <span className={status === "offline" ? "text-danger" : "text-muted"}>{conn.label}</span>
           </span>
-          <button type="button" onClick={() => setViewMode("stage")} className="border border-accent px-2 py-0.5 text-accent hover:bg-accent hover:text-bg">
+          <button type="button" onClick={() => goTo("stage")} className="border border-accent px-2 py-0.5 text-accent hover:bg-accent hover:text-bg">
             讲解视图 E
           </button>
         </div>
@@ -345,5 +372,6 @@ export default function App() {
 
       {gene && <GeneCard key={gene.id} gene={gene} onClose={() => setGene(null)} />}
     </div>
+    </>
   );
 }

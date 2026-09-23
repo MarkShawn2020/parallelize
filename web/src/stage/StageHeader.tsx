@@ -15,6 +15,7 @@ interface Props {
   offline: boolean;
   onPage: (page: StagePage) => void;
   onEngineering: () => void;
+  onHome: () => void;
   /** Back to the idle card after a finished run (key 0). */
   onStandby: () => void;
 }
@@ -41,7 +42,7 @@ export function statusLine(view: RunView): string {
   return `${cells} 个 Agent · ${m?.tasksTotal ?? view.config?.n ?? 0} 道${level}数学题 · 已收下 ${accepted} · 答对 ${correct} · 用时 ${clock}`;
 }
 
-export function StageHeader({ view, page, offline, onPage, onEngineering, onStandby }: Props) {
+export function StageHeader({ view, page, offline, onPage, onEngineering, onHome, onStandby }: Props) {
   return (
     <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border border-grid bg-panel/90 px-4 py-2">
       <h1 className="shrink-0 font-display text-2xl font-semibold tracking-[0.18em]">
@@ -73,6 +74,9 @@ export function StageHeader({ view, page, offline, onPage, onEngineering, onStan
       </nav>
       <button type="button" onClick={onEngineering} className="shrink-0 border border-grid px-3 py-1.5 text-base text-muted hover:border-fg hover:text-fg">
         工程视图 <span className="text-muted">E</span>
+      </button>
+      <button type="button" onClick={onHome} className="shrink-0 border border-grid px-3 py-1.5 text-base text-muted hover:border-fg hover:text-fg">
+        首页
       </button>
     </header>
   );

@@ -105,7 +105,7 @@ export const EVIDENCE_ROWS: readonly EvidenceRow[] = [
   },
 ];
 
-export const EVIDENCE_FOOTNOTE = "2026-09-23 真实运行，原始记录在 runs/ · 百分比四舍五入";
+export const EVIDENCE_FOOTNOTE = "2026-09-23 真实运行 · 原始记录见仓库 docs/evidence/2026-09-23/ · 百分比四舍五入";
 
 /** Facts from docs/技术说明.md (retest, main-comparison judge ledger, EvoMap publish). */
 export const EVIDENCE_BOXES: readonly EvidenceBox[] = [

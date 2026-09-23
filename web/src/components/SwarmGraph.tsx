@@ -725,7 +725,7 @@ export function SwarmGraph(props: Props) {
           {cellList.length > 0 && overlay && <div className="absolute top-3 right-4 max-w-[45%]">{overlay}</div>}
         </div>
           {/* Its own row under the canvas: as an overlay it covered the labels of the lowest cells. */}
-          <div className="flex h-10 flex-wrap items-center gap-x-4 gap-y-1 overflow-hidden border-t border-grid px-4 text-base text-fg/85">
+          <div className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 border-t border-grid px-4 py-1.5 text-base text-fg/85">
             {STAGE_LEGEND.map(([text, bg]) => (
               <span key={text} className="flex items-center gap-1.5">
                 <span aria-hidden className={`size-3 rounded-full ${bg}`} />
