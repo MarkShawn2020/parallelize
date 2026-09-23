@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import type { LLMRequest } from "../core/types";
 import { ProviderError } from "./http";
-import { OpenAICompatLLM, parseChatResponse } from "./openai-llm";
+import { OpenAICompatLLM, estimateCostUsd, parseChatResponse } from "./openai-llm";
 
 const fixture = JSON.parse(
   readFileSync(new URL("../../test/fixtures/openrouter-chat-response.json", import.meta.url), "utf8"),
@@ -105,9 +105,18 @@ describe("parseChatResponse", () => {
     expect(r.usage).toEqual({ inputTokens: 0, outputTokens: 0, costUsd: 0 });
   });
 
-  it("defaults cost to 0 when absent", () => {
-    const r = parseChatResponse({ model: "m", choices: [{ message: { content: "x" } }], usage: { prompt_tokens: 3, completion_tokens: 1 } }, "f");
-    expect(r.usage).toEqual({ inputTokens: 3, outputTokens: 1, costUsd: 0 });
+  it("estimates cost from the requested model's list price when the gateway omits it", () => {
+    const r = parseChatResponse(
+      { model: "anthropic/claude-haiku-4.5", choices: [{ message: { content: "x" } }], usage: { prompt_tokens: 1000, completion_tokens: 200 } },
+      "deepseek/deepseek-v4.1-flash",
+    );
+    // Priced by the model we asked for (0.1/0.5 per M), not the echoed id.
+    expect(r.usage.costUsd).toBeCloseTo((1000 * 0.1 + 200 * 0.5) / 1e6, 12);
+  });
+
+  it("prices unknown models conservatively like Haiku", () => {
+    expect(estimateCostUsd("someone/unknown-model", 1_000_000, 0)).toBe(1);
+    expect(estimateCostUsd("anthropic/claude-haiku-4.5", 0, 1_000_000)).toBe(5);
   });
 
   it("throws when there are no choices or no content", () => {

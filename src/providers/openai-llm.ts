@@ -61,9 +61,25 @@ export function parseChatResponse(raw: unknown, fallbackModel: string): Omit<LLM
   }
   return {
     text,
-    usage: parseUsage(raw.usage),
+    usage: parseUsage(raw.usage, fallbackModel),
     model: typeof raw.model === "string" && raw.model !== "" ? raw.model : fallbackModel,
   };
+}
+
+/** USD per million tokens [input, output], list prices on 2026-09-23. */
+const LIST_PRICES: Record<string, [number, number]> = {
+  "anthropic/claude-haiku-4.5": [1, 5],
+  "deepseek/deepseek-v4.1-flash": [0.1, 0.5],
+  "openai/gpt-6-luna": [0.1, 0.5],
+};
+
+/**
+ * Gateways other than OpenRouter (e.g. ZenMux) may omit usage.cost; without an estimate the ledger would
+ * read $0 and the run's cost cap would never trip. Unknown models are priced like Haiku to stay conservative.
+ */
+export function estimateCostUsd(model: string, inputTokens: number, outputTokens: number): number {
+  const [inPrice, outPrice] = LIST_PRICES[model] ?? [1, 5];
+  return (inputTokens * inPrice + outputTokens * outPrice) / 1e6;
 }
 
 function contentText(content: unknown): string | undefined {
@@ -74,12 +90,14 @@ function contentText(content: unknown): string | undefined {
     .join("");
 }
 
-function parseUsage(u: unknown): Usage {
+function parseUsage(u: unknown, model: string): Usage {
   const usage = isObject(u) ? u : {};
+  const inputTokens = isNum(usage.prompt_tokens) ? usage.prompt_tokens : 0;
+  const outputTokens = isNum(usage.completion_tokens) ? usage.completion_tokens : 0;
   return {
-    inputTokens: isNum(usage.prompt_tokens) ? usage.prompt_tokens : 0,
-    outputTokens: isNum(usage.completion_tokens) ? usage.completion_tokens : 0,
-    costUsd: isNum(usage.cost) ? usage.cost : 0,
+    inputTokens,
+    outputTokens,
+    costUsd: isNum(usage.cost) ? usage.cost : estimateCostUsd(model, inputTokens, outputTokens),
   };
 }
 
