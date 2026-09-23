@@ -202,10 +202,8 @@ function Lane({ id, run, s, ids, speed, t, scale }: { id: LaneId; run: RaceRun; 
           <span
             key={ids[i]}
             className={`relative aspect-square transition-colors duration-300 ${SQUARE[q] ?? "bg-grid"}`}
-            title={`第 ${i + 1} 题 · ${SQUARE_ZH[q] ?? ""}${(s.sources[i] ?? 0) >= 2 ? ` · ${s.sources[i]} 个独立来源` : ""}`}
-          >
-            {(s.sources[i] ?? 0) >= 2 && <span className="absolute inset-[34%] rounded-full bg-bg/75" aria-hidden />}
-          </span>
+            title={`第 ${i + 1} 题 · ${SQUARE_ZH[q] ?? ""}`}
+          />
         ))}
       </div>
 
@@ -213,11 +211,10 @@ function Lane({ id, run, s, ids, speed, t, scale }: { id: LaneId; run: RaceRun; 
         <div className={`h-full ${m.bar}`} style={{ width: `${progress * 100}%` }} />
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <Stat label="答对" value={String(s.correct)} sub={`已交 ${s.done}/${n}`} tone={s.finished && id === "swarm-jev" ? "text-accent" : "text-fg"} />
         <Stat label="花费" value={usd(s.costUsd)} sub={batch && !s.finished ? "交卷时结算" : "累计"} />
         <Stat label="用时" value={`${secs(s.elapsedMs)}s`} sub="真实时间" />
-        <Stat label="可审计" value={`${s.auditable} 题`} sub="≥2 个独立来源" />
       </div>
 
       <div className="flex flex-col gap-2 border-t border-grid pt-3">
@@ -380,7 +377,7 @@ function Summary({ data, lanes, middle }: { data: RaceData; lanes: ReadonlyArray
   const minWall = Math.min(...lanes.map(([, r]) => r.durationMs));
   const series: RadarSeries[] = lanes.map(([id, r]) => ({
     label: LANES[id].name,
-    values: [pct(r.final.correct, n), (minCost / r.final.costUsd) * 100, (minWall / r.durationMs) * 100, pct(r.final.auditable, n)],
+    values: [pct(r.final.correct, n), (minCost / r.final.costUsd) * 100, (minWall / r.durationMs) * 100],
     stroke: LANES[id].stroke,
     fill: LANES[id].fill,
   }));
@@ -407,7 +404,6 @@ function Summary({ data, lanes, middle }: { data: RaceData; lanes: ReadonlyArray
   const lines = [
     `Jev 蜂群答对 ${jev.final.correct} 题，单 Agent ${single.final.correct} 题：只有 Jev 蜂群答对的 ${vsSingle.onlyA} 题，只有单 Agent 答对的 ${vsSingle.onlyB} 题（${fmtP(vsSingle.p)}）。`,
     `比 ${midName}多答对 ${jev.final.correct - mid.final.correct} 题：只有 Jev 蜂群答对 ${vsMid.onlyA} 题、只有 EvoMap 蜂群答对 ${vsMid.onlyB} 题（${fmtP(vsMid.p)}，${vsMid.p < 0.05 ? "差距显著" : "差距还不显著"}）。`,
-    `可审计：Jev 蜂群 ${pct(jev.final.auditable, n)}% 的答案有 2 个以上独立来源，${midName}${pct(mid.final.auditable, n)}%，单 Agent 0%。`,
     middle === "rules"
       ? `代价：花费 $${jev.final.costUsd.toFixed(2)} 对 $${mid.final.costUsd.toFixed(2)}，用时 ${Math.round(jev.durationMs / 1000)} 秒对 ${Math.round(mid.durationMs / 1000)} 秒。多出的钱里判断占 ${usd(jevJudge.jevUsd + jevJudge.llmUsd)}，其余主要是多做的复核：${jevVerified} 次对 ${midVerified} 次。`
       : `判断：大模型判断从 ${midJudge.llm} 次降到 ${jevJudge.llm} 次，Jev 做的 ${jevJudge.jev} 次判断一共 ${usd(jevJudge.jevUsd)}；总花费 $${jev.final.costUsd.toFixed(2)} 对 $${mid.final.costUsd.toFixed(2)}，用时 ${Math.round(jev.durationMs / 1000)} 秒对 ${Math.round(mid.durationMs / 1000)} 秒。`,
@@ -439,7 +435,6 @@ function Summary({ data, lanes, middle }: { data: RaceData; lanes: ReadonlyArray
                   <th className="py-2 pr-3 font-normal">准确率</th>
                   <th className="py-2 pr-3 font-normal">花费</th>
                   <th className="py-2 pr-3 font-normal">用时</th>
-                  <th className="py-2 pr-3 font-normal">可审计</th>
                   <th className="py-2 font-normal">判断由谁做</th>
                 </tr>
               </thead>
@@ -452,7 +447,6 @@ function Summary({ data, lanes, middle }: { data: RaceData; lanes: ReadonlyArray
                     </td>
                     <td className="py-2.5 pr-3">${r.final.costUsd.toFixed(2)}</td>
                     <td className="py-2.5 pr-3">{Math.round(r.durationMs / 1000)} 秒</td>
-                    <td className="py-2.5 pr-3">{pct(r.final.auditable, n)}%</td>
                     <td className="py-2.5 text-sm">{judgeText(id, r)}</td>
                   </tr>
                 ))}
@@ -467,7 +461,7 @@ function Summary({ data, lanes, middle }: { data: RaceData; lanes: ReadonlyArray
             ))}
           </ul>
           <p className="text-sm text-muted">
-            雷达越往外越好：{RADAR_AXES.join(" · ")}；省钱、速度以三者里最便宜、最快的为 100。p 值为按题配对的精确 McNemar 检验。
+            雷达越往外越好：{RADAR_AXES.join(" · ")}，越准、越省、越快；成本、速度以三者里最便宜、最快的为 100。p 值为按题配对的精确 McNemar 检验。
           </p>
         </div>
       </div>
@@ -597,12 +591,6 @@ export function Race({ onReady }: { onReady?: () => void }) {
             {label}
           </span>
         ))}
-        <span className="flex items-center gap-1.5">
-          <span className="relative inline-block size-3.5 bg-ok" aria-hidden>
-            <span className="absolute inset-[30%] rounded-full bg-bg/75" />
-          </span>
-          中间有点：有 2 个以上独立来源，可审计
-        </span>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

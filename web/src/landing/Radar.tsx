@@ -50,14 +50,25 @@ export function Radar({ series, size = 240, labels = true }: Props) {
           />
         ))}
       </svg>
-      {labels && (
-        <>
-          <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full pb-1 text-sm whitespace-nowrap text-muted">{RADAR_AXES[0]}</span>
-          <span className="absolute top-1/2 left-full -translate-y-1/2 pl-1 text-sm whitespace-nowrap text-muted">{RADAR_AXES[1]}</span>
-          <span className="absolute top-full left-1/2 -translate-x-1/2 pt-1 text-sm whitespace-nowrap text-muted">{RADAR_AXES[2]}</span>
-          <span className="absolute top-1/2 right-full -translate-y-1/2 pr-1 text-sm whitespace-nowrap text-muted">{RADAR_AXES[3]}</span>
-        </>
-      )}
+      {labels &&
+        RADAR_AXES.map((a, i) => {
+          // Just past the spoke's tip, with the label box pushed outward along the same direction.
+          const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+          const [x, y] = point(i, 108, n);
+          return (
+            <span
+              key={a}
+              className="absolute text-sm whitespace-nowrap text-muted"
+              style={{
+                left: `${x / 2}%`,
+                top: `${y / 2}%`,
+                transform: `translate(${-50 + 50 * Math.cos(angle)}%, ${-50 + 50 * Math.sin(angle)}%)`,
+              }}
+            >
+              {a}
+            </span>
+          );
+        })}
     </div>
   );
 }

@@ -228,7 +228,7 @@ function FrameworkPage() {
       >
         <div className="grid gap-3 md:grid-cols-3">
           <Stat value="$5.4 → $0.2" label="每 1 万次协调判断：大模型 → Jev（主对照实测，约 27 倍）" tone="text-s1" />
-          <Stat value="58%" label="Jev 蜂群的答案有 2 个以上独立来源，可以追溯；单 Agent 和投票都是 0" />
+          <Stat value="$0.30 对 $0.49" label="准确率与同预算投票打平（89% 对 91%，差距不显著 p = 0.80），整轮少花 39%，快 22 秒" />
           <Stat value="0 token" label="领题、租约、合并、回声检测全是规则，不花一个 token" tone="text-fg" />
         </div>
         <div className="grid gap-3 md:grid-cols-3">
@@ -334,7 +334,7 @@ function ComparePage({ onRaceReady, onOpenBank }: { onRaceReady: () => void; onO
             </div>
           ))}
         </div>
-        <p className="text-sm text-muted">小雷达四个角：上准确率 · 右省钱 · 下速度 · 左可审计。没有全能冠军，只有该用谁。</p>
+        <p className="text-sm text-muted">小雷达三个角：上准确率 · 右下成本 · 左下速度，越往外越准、越省、越快。没有全能冠军，只有该用谁。</p>
       </Section>
 
       <Section id="data" eyebrow="数据报告" title={EVIDENCE_TITLE} lead="准确率不是越往上越高：同预算投票最准但最贵；能站住的结论是蜂群胜过个体之和。">

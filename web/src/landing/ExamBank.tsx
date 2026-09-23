@@ -179,7 +179,7 @@ export function ExamBank({ onClose }: { onClose: () => void }) {
                     <li
                       key={p.runId}
                       className={`border px-2 py-1 text-xs ${tone}`}
-                      title={r ? `${p.name} 答 ${r.answer}${r.sources >= 2 ? ` · ${r.sources} 个独立来源` : ""}` : `${p.name} 没有给出答案`}
+                      title={r ? `${p.name} 答 ${r.answer}` : `${p.name} 没有给出答案`}
                     >
                       {p.lecture} · {p.name} {!r ? "未答" : r.correct ? "对" : `错（${r.answer}）`}
                     </li>

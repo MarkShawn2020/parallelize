@@ -64,11 +64,10 @@ export function ParadigmExplorer() {
           <p className="text-lg leading-relaxed text-fg/80">{p.adds}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-4">
           <Metric label="准确率" value={`${Math.round(accuracyOf(p))}%`} sub={`${p.correct}/96`} />
           <Metric label="花费" value={`$${p.costUsd.toFixed(2)}`} sub="96 题合计" />
           <Metric label="用时" value={`${Math.round(p.wallS)}s`} sub="墙钟时间" />
-          <Metric label="可审计" value={`${Math.round(p.auditable)}%`} sub="≥2 个独立来源" />
         </div>
 
         <div className="flex flex-col items-center gap-8 md:flex-row md:items-start">
@@ -94,7 +93,7 @@ export function ParadigmExplorer() {
             {q && q !== p && (
               <p className="font-mono text-base leading-relaxed text-fg/85 tabular-nums">
                 比「{q.name}」：准确率 {signed(accuracyOf(p) - accuracyOf(q), 0, " 点")} · 花费 {signed(p.costUsd - q.costUsd, 2)} 美元 · 用时{" "}
-                {signed(p.wallS - q.wallS, 0, " 秒")} · 可审计 {signed(p.auditable - q.auditable, 0, " 点")}
+                {signed(p.wallS - q.wallS, 0, " 秒")}
               </p>
             )}
             <div className="border-l-4 border-accent bg-panel-2 px-4 py-3">
@@ -107,7 +106,7 @@ export function ParadigmExplorer() {
             </div>
           </div>
         </div>
-        <p className="text-sm text-muted">雷达越往外越好。省钱、速度以七种里最便宜、最快的为 100；可审计 = 有 2 个以上独立来源的答案占比。</p>
+        <p className="text-sm text-muted">雷达越往外越好：越准、越省、越快。成本、速度以七种里最便宜、最快的为 100。</p>
       </div>
     </div>
   );

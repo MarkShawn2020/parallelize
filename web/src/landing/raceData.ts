@@ -23,7 +23,7 @@ export interface RaceRun {
   cost: Array<[number, number]>;
   /** [t, key, disagreement, window] */
   guard: Array<[number, string, number, number]>;
-  final: { correct: number; costUsd: number; auditable: number };
+  final: { correct: number; costUsd: number };
 }
 
 export interface RaceData {
@@ -48,10 +48,8 @@ export interface JudgeTally {
 
 export interface LaneState {
   squares: number[];
-  sources: number[];
   done: number;
   correct: number;
-  auditable: number;
   costUsd: number;
   verified: number;
   adopted: number;
@@ -80,7 +78,6 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)} 秒`;
 export function laneAt(run: RaceRun, keys: readonly JudgeKey[], n: number, t: number): LaneState {
   const batch = run.claim.length === 0;
   const squares = new Array<number>(n).fill(batch && t > 0 ? SQ.working : SQ.idle);
-  const sources = new Array<number>(n).fill(0);
   const feed: FeedLine[] = [];
   const push = (line: FeedLine) => {
     feed.push(line);
@@ -100,16 +97,13 @@ export function laneAt(run: RaceRun, keys: readonly JudgeKey[], n: number, t: nu
 
   let done = 0;
   let correct = 0;
-  let auditable = 0;
   let lastAcc: RaceRun["acc"][number] | null = null;
   for (const a of run.acc) {
-    const [at, i, ok, src] = a;
+    const [at, i, ok] = a;
     if (at > t) break;
     squares[i] = ok ? SQ.ok : SQ.wrong;
-    sources[i] = src;
     done++;
     if (ok) correct++;
-    if (src >= 2) auditable++;
     lastAcc = a;
   }
 
@@ -154,13 +148,13 @@ export function laneAt(run: RaceRun, keys: readonly JudgeKey[], n: number, t: nu
     });
   }
   if (lastAcc) {
-    const [at, i, ok, src] = lastAcc;
+    const [at, i, ok] = lastAcc;
     lines.push({
       t: at,
       tone: ok ? "ok" : "danger",
       text: batch
         ? `一次交卷：${done} 题全部交上，答对 ${correct} 题`
-        : `第 ${i + 1} 题收下 · ${ok ? "答对" : "答错"}${src >= 2 ? ` · ${src} 个独立来源` : ""}`,
+        : `第 ${i + 1} 题收下 · ${ok ? "答对" : "答错"}`,
     });
   }
   lines.sort((a, b) => a.t - b.t);
@@ -179,10 +173,8 @@ export function laneAt(run: RaceRun, keys: readonly JudgeKey[], n: number, t: nu
 
   return {
     squares,
-    sources,
     done,
     correct,
-    auditable,
     costUsd,
     verified,
     adopted,

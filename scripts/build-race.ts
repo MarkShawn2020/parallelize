@@ -105,7 +105,6 @@ for (const [mode, runId] of RUNS) {
     final: {
       correct: acc.filter((a) => a[2] === 1).length,
       costUsd: round(last.costUsd ?? 0, 5),
-      auditable: acc.filter((a) => (a[3] ?? 0) >= 2).length,
     },
   };
 }
