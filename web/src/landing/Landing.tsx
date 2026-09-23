@@ -119,7 +119,7 @@ const BAR_TONE: Record<string, string> = {
   hatched: "bg-[repeating-linear-gradient(45deg,var(--color-muted)_0_6px,transparent_6px_12px)]",
 };
 
-function FrameworkPage({ onStartRace }: { onStartRace: () => void }) {
+function FrameworkPage() {
   return (
     <>
       <section className="relative overflow-hidden">
@@ -140,9 +140,9 @@ function FrameworkPage({ onStartRace }: { onStartRace: () => void }) {
             <Stat value="约 27×" label="每次协调判断，Jev 比大模型便宜：1 万次判断约 $0.2 对 $5.4（实测）" tone="text-s1" />
           </div>
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={onStartRace} className="bg-accent px-6 py-3 text-lg font-semibold text-bg hover:bg-accent/85">
-              开始三路对照 →
-            </button>
+            <a href={COMPARE_ROUTE} className="bg-accent px-6 py-3 text-lg font-semibold text-bg hover:bg-accent/85">
+              看框架对比 →
+            </a>
             <a href={DEMO} {...DEMO_TARGET} className="border border-fg/40 px-6 py-3 text-lg text-fg hover:border-fg">
               {STATIC_SITE ? "在本地跑现场演示" : "进入现场演示"}
             </a>
@@ -248,17 +248,7 @@ function FrameworkPage({ onStartRace }: { onStartRace: () => void }) {
   );
 }
 
-function ComparePage({
-  autoStart,
-  onAutoStarted,
-  onRaceReady,
-  onOpenBank,
-}: {
-  autoStart: boolean;
-  onAutoStarted: () => void;
-  onRaceReady: () => void;
-  onOpenBank: () => void;
-}) {
+function ComparePage({ onRaceReady, onOpenBank }: { onRaceReady: () => void; onOpenBank: () => void }) {
   return (
     <>
       <section className="border-b border-grid">
@@ -266,7 +256,7 @@ function ComparePage({
           <span className="font-mono text-sm tracking-widest text-accent">框架对比 · 同一张考卷、同一个做题模型</span>
           <h1 className="text-4xl leading-tight font-bold text-fg md:text-5xl">单 Agent、EvoMap 蜂群、Jev 蜂群，同时做 96 道题</h1>
           <p className="max-w-[860px] text-lg leading-relaxed text-fg/80">
-            三种方式考同一张卷、用同一个做题模型 Haiku 4.5，只换协作方式。点「开始运行」，三条车道同时开跑：每个格子是一道题，绿色答对、红色答错；青色是 Jev
+            三种方式考同一张卷、用同一个做题模型 Haiku 4.5，只换协作方式。下面先是三种方式各自交卷后的结果：每个格子是一道题，绿色答对、红色答错。点「重跑一遍」，看三条车道同时从头做题：青色是 Jev
             在判断，琥珀色是交给了大模型。
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
@@ -279,7 +269,7 @@ function ComparePage({
         </div>
       </section>
       <div className="mx-auto max-w-[1200px] px-4 py-10">
-        <Race autoStart={autoStart} onAutoStarted={onAutoStarted} onReady={onRaceReady} />
+        <Race onReady={onRaceReady} />
       </div>
 
       <Section
@@ -393,24 +383,17 @@ function ComparePage({
 export function Landing({ liveRunning }: Props) {
   const { page, section } = parseLandingHash(useHash());
   const [bankOpen, setBankOpen] = useState(false);
-  const [autoRace, setAutoRace] = useState(false);
-  // Read by the scroll effect without re-running it: when the race clears the flag, the page must not jump to the top.
-  const autoRaceRef = useRef(false);
 
   const lastPage = useRef<Page | null>(null);
   const sectionRef = useRef(section);
   sectionRef.current = section;
 
   // Land at the top of a new page, or on the section a link asked for. Leaving a section within a page (Back) keeps the
-  // browser's restored position; the report scrolls itself once loaded; a race started from the hero scrolls to its board.
+  // browser's restored position; the report scrolls itself once loaded.
   useEffect(() => {
     const entering = lastPage.current !== page;
     lastPage.current = page;
-    if (page !== "compare" && autoRaceRef.current) {
-      autoRaceRef.current = false;
-      setAutoRace(false);
-    }
-    if (page === "report" || autoRaceRef.current) return;
+    if (page === "report") return;
     if (section) document.getElementById(section)?.scrollIntoView({ block: "start" });
     else if (entering) window.scrollTo({ top: 0 });
   }, [page, section]);
@@ -436,18 +419,9 @@ export function Landing({ liveRunning }: Props) {
   // Once the race board is in, a deep link to a compare section lands again (Safari has no scroll anchoring).
   const raceReady = useCallback(() => {
     const target = sectionRef.current;
-    if (target && !autoRaceRef.current) document.getElementById(target)?.scrollIntoView({ block: "start" });
+    if (target) document.getElementById(target)?.scrollIntoView({ block: "start" });
   }, []);
 
-  const startRace = () => {
-    autoRaceRef.current = true;
-    setAutoRace(true);
-    window.location.hash = COMPARE_ROUTE;
-  };
-  const raceStarted = useCallback(() => {
-    autoRaceRef.current = false;
-    setAutoRace(false);
-  }, []);
   const openBank = useCallback(() => setBankOpen(true), []);
 
   return (
@@ -487,8 +461,8 @@ export function Landing({ liveRunning }: Props) {
       </header>
 
       <main id="top">
-        {page === "framework" && <FrameworkPage onStartRace={startRace} />}
-        {page === "compare" && <ComparePage autoStart={autoRace} onAutoStarted={raceStarted} onRaceReady={raceReady} onOpenBank={openBank} />}
+        {page === "framework" && <FrameworkPage />}
+        {page === "compare" && <ComparePage onRaceReady={raceReady} onOpenBank={openBank} />}
         {page === "report" && <ReportPage section={section} />}
       </main>
 

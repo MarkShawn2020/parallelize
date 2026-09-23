@@ -483,8 +483,11 @@ const LEGEND: ReadonlyArray<[string, string]> = [
   [SQUARE[SQ.wrong] ?? "", "答错"],
 ];
 
-/** Three lanes on one clock: the same 96 problems, the same solver model, three ways of working together. */
-export function Race({ autoStart = false, onAutoStarted, onReady }: { autoStart?: boolean; onAutoStarted?: () => void; onReady?: () => void }) {
+/**
+ * Three lanes on one clock: the same 96 problems, the same solver model, three ways of working together. The board
+ * opens on the final result; "重跑一遍" replays the recorded runs from the first second.
+ */
+export function Race({ onReady }: { onReady?: () => void }) {
   const data = useRaceData();
   const [speed, setSpeed] = useState<number>(8);
   const [middle, setMiddle] = useState<Middle>("rules");
@@ -501,53 +504,48 @@ export function Race({ autoStart = false, onAutoStarted, onReady }: { autoStart?
   const end = lanes.reduce((m, [, r]) => Math.max(m, r.durationMs), 0);
   // Judgment bars share one scale, so the Jev and LLM lanes compare at a glance.
   const judgeScale = lanes.reduce((m, [, r]) => Math.max(m, r.judge.length), 1);
-  const { t, running, setRunning, seek } = useClock(speed, end);
+  const { t: clock, running, setRunning, seek } = useClock(speed, end);
+  // Until someone replays, every lane shows where its run ended.
+  const [replaying, setReplaying] = useState(false);
+  const t = replaying ? clock : end;
+  const done = t >= end;
 
-  const start = useCallback(() => {
-    if (t >= end) seek(0);
+  const replay = useCallback(() => {
+    setReplaying(true);
+    seek(0);
     setRunning(true);
-  }, [t, end, seek, setRunning]);
+  }, [seek, setRunning]);
+  const showResult = useCallback(() => {
+    setRunning(false);
+    setReplaying(false);
+  }, [setRunning]);
 
   // The board is ~1000px tall and arrives after the page: a deep link to a section below it re-scrolls then.
   useEffect(() => {
     if (ready) onReady?.();
   }, [ready, onReady]);
 
-  // Arriving from the hero's "start" button: bring the board into view and run once the data is in.
-  useEffect(() => {
-    if (autoStart && data === "error") onAutoStarted?.();
-    if (!autoStart || !ready) return;
-    document.getElementById("race-board")?.scrollIntoView({ block: "start" });
-    seek(0);
-    setRunning(true);
-    onAutoStarted?.();
-  }, [autoStart, ready, data, seek, setRunning, onAutoStarted]);
-
   const states = useMemo(() => (ready ? lanes.map(([, r]) => laneAt(r, data.judgeKeys, data.ids.length, t)) : []), [data, ready, lanes, t]);
 
   if (data === "error") return <p className="border border-grid bg-panel p-6 text-fg/80">对照数据没有加载成功，刷新页面再试。</p>;
   if (!ready || states.length < 3) return <p className="border border-grid bg-panel p-6 text-muted">加载对照数据…</p>;
   const [single, mid, jev] = states as [LaneState, LaneState, LaneState];
-  const done = t >= end;
 
-  const primary = running ? "暂停" : done ? "再跑一次" : t > 0 ? "继续" : "开始运行";
+  const primary = running ? "暂停" : done ? "重跑一遍" : "继续";
 
   return (
     <div id="race-board" className="flex scroll-mt-16 flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3 border border-grid bg-panel/90 p-4">
         <button
           type="button"
-          onClick={() => (running ? setRunning(false) : start())}
+          onClick={() => (running ? setRunning(false) : done ? replay() : setRunning(true))}
           className="min-w-36 bg-accent px-6 py-3 text-lg font-bold text-bg hover:bg-accent/85"
         >
           {primary}
         </button>
         <button
           type="button"
-          onClick={() => {
-            setRunning(false);
-            seek(end);
-          }}
+          onClick={showResult}
           disabled={done}
           className="border border-fg/40 px-4 py-3 text-fg hover:border-fg disabled:opacity-40"
         >
@@ -568,7 +566,7 @@ export function Race({ autoStart = false, onAutoStarted, onReady }: { autoStart?
           ))}
         </span>
         <span className="font-mono text-sm text-fg/85 tabular-nums">
-          真实时间 {secs(t)} / {secs(end)} 秒
+          {replaying && !done ? `回放中 · 真实时间 ${secs(t)} / ${secs(end)} 秒` : `最终结果 · 最慢的一路用了 ${secs(end)} 秒`}
         </span>
         <span className="flex flex-wrap items-center gap-1.5 text-sm text-muted lg:ml-auto">
           EvoMap 蜂群的判断
@@ -618,7 +616,7 @@ export function Race({ autoStart = false, onAutoStarted, onReady }: { autoStart?
         <Summary data={data} lanes={lanes} middle={middle} />
       ) : (
         <div className="border border-dashed border-grid px-5 py-4 text-sm text-muted">
-          三条车道都交卷后，这里出雷达图和汇总表；也可以点「直接看结果」。
+          三条车道都交卷后，这里重新出雷达图和汇总表；也可以点「直接看结果」。
         </div>
       )}
 
