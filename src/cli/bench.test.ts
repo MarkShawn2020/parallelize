@@ -36,6 +36,9 @@ describe("buildPlan", () => {
     expect(cfg?.config.n).toBe(7);
     expect(cfg?.config.cellModels).toEqual(["a/b", "c/d"]);
     expect(cfg?.config.evomapLookup).toBe(true);
+    expect(cfg?.config.evomapPublish).toBe(false);
+    const [pub] = buildPlan({ mode: "swarm-jev", "evomap-publish": true });
+    expect(pub?.config.evomapPublish).toBe(true);
   });
 
   it("validates arguments", () => {

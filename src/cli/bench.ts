@@ -14,13 +14,14 @@ export const BENCH_ORDER: readonly Mode[] = ["swarm-jev", "single", "single-vote
 
 const USAGE = `usage: pnpm bench [--mode <mode[,mode...]|all>] [--n 64] [--cells 8] [--seed 7] [--judge jev|mock] [--llm openrouter|mock] [--sim-pace 1]
                   [--source synthetic|gsm8k] [--difficulty normal|hard] [--path file.jsonl] [--max-cost 2] [--vote-budget <tokens>]
-                  [--inherit] [--library-dir <dir>] [--evomap-lookup] [--cell-models a,b]
+                  [--inherit] [--library-dir <dir>] [--evomap-lookup] [--evomap-publish] [--cell-models a,b]
                   [--research "<idea>" [--claims 6] [--canaries 2]]
 modes: ${MODES.join(", ")}
 --inherit runs one swarm mode (default swarm-jev) twice: cold on --seed with an empty library, warm on --seed+1 inheriting it.
 --difficulty hard (synthetic only): 6-9 step problems with distractor facts and unit conversions; run labels get a /hard suffix.
 --sim-pace N (1-40) multiplies simulated provider latency; 10 paces a mock run like a real one.
---reasoning off|low|default sets the real LLM reasoning pass (default off).`;
+--reasoning off|low|default sets the real LLM reasoning pass (default off).
+--evomap-publish publishes genes that pass the holdout gate to EvoMap (real providers and a registered node only).`;
 
 const COLUMNS: Array<[string, number]> = [
   ["run", 20],
@@ -115,6 +116,7 @@ export function buildPlan(values: BenchArgs): BenchRun[] {
       voteBudgetTokens: voteBudget,
       inherit,
       evomapLookup: values["evomap-lookup"] === true,
+      evomapPublish: values["evomap-publish"] === true,
       cellModels: models === undefined ? undefined : models.split(",").map((m) => m.trim()).filter(Boolean),
       taskSource:
         idea !== undefined
@@ -203,6 +205,7 @@ async function main(): Promise<number> {
       inherit: { type: "boolean" },
       "library-dir": { type: "string" },
       "evomap-lookup": { type: "boolean" },
+      "evomap-publish": { type: "boolean" },
       research: { type: "string" },
       claims: { type: "string" },
       canaries: { type: "string" },
