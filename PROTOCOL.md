@@ -1,6 +1,6 @@
 # JIS Swarm Protocol v1
 
-> **中文摘要**：这是一套与模型、传输无关的蜂群协作协议。没有中心调度器：agent 用能力卡（capability card）自我描述、互相发现，从黑板按固定规则认领任务（零 token），只有规则写不出的判断（要不要复核、要不要采纳基因、两个冲突答案谁对）才交给 System 1（Jev），低置信再升级给 System 2（LLM）。每条消息都带血缘（parents），据此按"独立来源"而非票数判定共识，识别回声 / 假共识。共享状态只由 `board`、`registry`、`library` 三个服务写入，agent 持有权限受限的句柄，越权即 `DENIED`；信任过低自动隔离，Jev 离线降级到 System 2，System 2 失败回退到保守默认值。经验（基因 + 已被结果确认的判例）沉淀到本地经验库，卡住时查 EvoMap 公共基因，通过留出集 A/B 门槛的基因才发布回 EvoMap。新 agent 只需实现几条消息、发一张能力卡即可接入，模型不限。
+> **中文摘要**：这是一套与模型、传输无关的蜂群协作协议。没有中心调度器：agent 用能力卡（capability card）自我描述、互相发现，从黑板按固定规则认领任务（零 token），只有规则写不出的判断（要不要复核、要不要采纳基因、两个冲突答案谁对）才交给 System 1（Jev），低置信再升级给 System 2（LLM）。每条消息都带血缘（parents），据此按"独立来源"而非票数判定共识，识别回声 / 假共识。共享状态只由 `board`、`registry`、`library` 三个服务写入，agent 持有权限受限的句柄，越权即 `DENIED`；信任过低自动隔离，Jev 离线降级到 System 2，System 2 失败回退到保守默认值。经验（基因 + 已被结果确认的判例）沉淀到本地经验库，卡住时查 EvoMap 公共基因，通过留出集 A/B 门槛的基因才发布回 EvoMap。新 agent 只需实现几条消息、发一张能力卡即可接入，模型不限；目前只实现了进程内接入，外部 agent 的 WebSocket 绑定已设计、尚未上线（见第 8 节 Transport bindings）。
 
 Machine-checked: `src/protocol/messages.ts` holds the same body table (`BODY_SCHEMA`), and a test validates every JSON example in this file.
 

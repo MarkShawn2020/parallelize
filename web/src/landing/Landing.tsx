@@ -59,7 +59,7 @@ const EXAMPLES: ReadonlyArray<[string, string, string]> = [
 
 const GHOST: ReadonlyArray<[string, string]> = [
   ["Jev 判断", "只答是/否、选哪个、打几分，约半秒，每万次约 $0.2；从不产出答案"],
-  ["大模型兜底", "Jev 调用失败时交给大模型；也可以设一个置信度阈值，把拿不准的判断交回大模型"],
+  ["大模型兜底", "Jev 拿不准（置信度低于阈值，真实运行默认 0.2）或调用失败时，交给大模型；阈值设 0 就是纯 Jev"],
   ["校准守卫", "某一类判断 Jev 和大模型分歧太大，整类自动交还大模型"],
 ];
 const SHELL: ReadonlyArray<[string, string]> = [
@@ -142,7 +142,7 @@ function FrameworkPage() {
           <div className="grid gap-3 sm:grid-cols-3">
             <Stat value="约 27×" label="每次判断的花费：Jev 约 $0.2 / 万次，Haiku 当判断者约 $5.4 / 万次；Jev 一次约半秒（实测）" tone="text-s1" />
             <Stat value="176 · 178 · 178" label="两个种子共 192 道困难题、Haiku 4.5 做题，只换判断者：Jev 176、Sonnet 5 178、Opus 5 178，配对检验分不出高下" />
-            <Stat value="34 : 9" label="两批共 288 题按题配对：只有 JIS 蜂群答对 34 题，只有每题各做各的答对 9 题（p = 0.00017）" />
+            <Stat value="34 : 9" label="两批共 288 题按题配对：JIS 蜂群对、只并行错 34 题，反过来只有 9 题（p = 0.00017）" />
           </div>
           <div className="flex flex-wrap gap-3">
             <a href={COMPARE_ROUTE} className="bg-accent px-6 py-3 text-lg font-semibold text-bg hover:bg-accent/85">
@@ -360,7 +360,7 @@ function ComparePage({ onRaceReady, onOpenBank }: { onRaceReady: () => void; onO
         <p className="text-sm text-muted">小雷达三个角：上准确率 · 右下成本 · 左下速度，越往外越准、越省、越快。没有全能冠军，只有该用谁。</p>
       </Section>
 
-      <Section id="data" eyebrow="数据报告" title={EVIDENCE_TITLE} lead="准确率不是越往上越高：单 Agent 投票最准但最贵；能站住的结论是蜂群胜过个体之和。">
+      <Section id="data" eyebrow="数据报告" title={EVIDENCE_TITLE} lead="准确率不是越往上越高：单 Agent 投票最准但最贵；能站住的结论是 JIS 蜂群胜过只并行（个体之和）。">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-3 border border-grid bg-panel/90 p-5">
             {EVIDENCE_ROWS.map((r) => (

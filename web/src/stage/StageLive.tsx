@@ -133,8 +133,8 @@ export function StageLive({ view, running, selected, onToggle, onKill, onOpenGen
 
       <footer className="flex flex-wrap items-center justify-between gap-x-6 border border-grid bg-panel/90 px-4 py-1.5 text-base">
         <span className="text-fg">
-          同一个模型 Claude Haiku 4.5 · 96 道困难题：一个上下文硬做 <span className="text-muted">64%</span> → 每题各做各的{" "}
-          <span className="text-fg">80%</span> → Jev 协调蜂群 <span className="font-semibold text-accent">89%</span>
+          同一个模型 Claude Haiku 4.5 · 96 道困难题：单 Agent <span className="text-muted">64%</span> → 只并行{" "}
+          <span className="text-fg">80%</span> → JIS 蜂群 <span className="font-semibold text-accent">89%</span>
         </span>
         <button type="button" onClick={onEvidence} className="text-muted hover:text-fg">
           按 2 看完整对比 ›

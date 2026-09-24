@@ -16,17 +16,17 @@ Coordination that can be written as a rule costs zero tokens. The fast typed jud
 
 | 组织方式 | 准确率 | 成本（美元） | 耗时（秒） |
 |---|---|---|---|
-| 单上下文 | 63.5% | 0.062 | 59 |
-| 仅并行（个体之和） | 80.2% | 0.115 | 31 |
+| 单 Agent | 63.5% | 0.062 | 59 |
+| 只并行（个体之和） | 80.2% | 0.115 | 31 |
 | Sub-Agent | 80.2% | 0.240 | 49 |
 | 规则蜂群 | 84.4% | 0.154 | 44 |
-| 大模型协调蜂群 | 83.3% | 0.310 | 101 |
-| **Jev 协调蜂群** | **88.5%** | 0.296 | 102 |
-| 同预算投票 | 90.6% | 0.485 | 125 |
+| LLM 蜂群 | 83.3% | 0.310 | 101 |
+| **JIS 蜂群** | **88.5%** | 0.296 | 102 |
+| 单 Agent 投票 | 90.6% | 0.485 | 125 |
 
-- 涌现：另取 192 道新题复测，Jev 协调蜂群 92.7% 对个体之和 83.9%。两次合计 288 题，按题配对的精确 McNemar 检验 34 比 9，p=0.00017。
+- 涌现：另取 192 道新题复测，JIS 蜂群 92.7% 对只并行 83.9%。两次合计 288 题，按题配对的精确 McNemar 检验 34 比 9，p=0.00017。
 - 判断层：Jev 104 次判断共 0.002 美元，中位 0.47 秒；大模型判断次数从 155 降到 77。
-- 诚实的部分：同预算投票与 Jev 蜂群打平（差 2 题，p=0.80），但多花 64% 的钱；校准守卫发现 Jev 在"要不要复核"上与 Haiku 88% 不一致，自动把这一类交还给大模型；有 2 个以上独立来源仍然错的答案占 8.9%；经验继承减少了重复判断，但在同题对照中没有提升准确率。
+- 诚实的部分：单 Agent 投票与 JIS 蜂群分不出高下（差 2 题，p=0.80），但多花 64% 的钱；校准守卫发现 Jev 拿不准的"要不要复核"判断里，8 次有 7 次与 Haiku 相反，自动把这一类交还给大模型；有 2 个以上独立来源仍然错的答案占 8.9%；经验继承减少了重复判断，但在同题对照中没有提升准确率。
 - EvoMap：通过留出集 A/B（8/8 对 7/8）的一条 Gene 已发布：<https://evomap.ai/asset/sha256:f09e2dd70fd8ad55c1110922f679c80bd59b08ae7f4f26b273746354888e333c>
 - 完整说明见 [docs/技术说明.md](docs/技术说明.md)。
 
@@ -34,7 +34,7 @@ Coordination that can be written as a rule costs zero tokens. The fast typed jud
 
 | 维度 | 机制 | 在哪里看 |
 | --- | --- | --- |
-| 涌现 Emergence | 三个消融对照证明"蜂群 > 单体之和"：`swarm-solo`（只并行认领 + 确定性合并，关掉复核与基因交换，即单体之和）、`swarm-rules`（固定规则、无裁判）、`single-vote`（同 token 预算、每题独立解 k 次多数投票）。共识按血缘不相交的独立来源计数，同源一致只算一个来源；分歧走 dispute 裁决，说不准就再要一次独立重解。 | 看板"模式对比"表；`pnpm bench` 对比表；"指标"面板的 Pass-through、≥2 源错放、Coord share |
+| 涌现 Emergence | 三个消融对照检验"JIS 蜂群 > 个体之和"：`swarm-solo`（只并行：并行认领 + 确定性合并，关掉复核与基因交换，即个体之和）、`swarm-rules`（规则蜂群：固定规则、无裁判）、`single-vote`（单 Agent 投票：同 token 预算、每题独立解 k 次多数投票）。共识按血缘不相交的独立来源计数，同源一致只算一个来源；分歧走 dispute 裁决，说不准就再要一次独立重解。 | 看板"模式对比"表；`pnpm bench` 对比表；"指标"面板的 Pass-through、≥2 源错放、Coord share |
 | 协议与通信 Protocol | 传输无关的 JSON 信封 + 15 种消息（ANNOUNCE / DISCOVER / CLAIM / PROPOSE / REVIEW_REQUEST / ACCEPT / ECHO_ALARM / GENE_* / LIBRARY_* / QUARANTINE / DENIED 等）；能力卡（模型、各领域战绩、基因摘要、信任、状态）进注册表，按领域战绩与信任 `discover`；只交换有界摘要，每条消息带血缘父节点；经验通过本地经验库和 EvoMap 传给后来者。 | "注册表"页签（能力卡）、"协议"页签（消息轨迹）、"经验库"页签 |
 | 容错与安全 Fault tolerance & security | 权限受限的 cell 句柄（越权提交被拒并广播 DENIED）；试用期 + 随机抽查 + 低信任强制复核；Beta 信任与自动隔离；演示用"入侵"开关让一个 cell 变成对抗者；"Jev 故障"开关让 System 1 离线，判断降级到 System 2；System 2 也失败时回退到保守默认值；校准守卫；基因文本注入过滤；租约到期自动回收任务。 | 顶栏"入侵 / Jev 故障 / 杀节点"按钮；告警条；注册表里的信任与隔离状态；"决策流" |
 | 可扩展性 Extensibility | 运行中即插即用加入新 cell，可换模型（能力卡自动发布，被 `discover` 找到后参与基因交换）；`cellModels` 按轮转给 cell 分配不同模型；同一套蜂群直接跑"想法验证"场景（想法 → 论断 + 金丝雀 → 蜂群裁决 → 确定性的继续 / 放弃报告）；Judge / LLM 是接口，换供应商不动蜂群。 | 顶栏"加入 spawn"；"研究报告"页签；PROTOCOL.md 第 9 节 |
@@ -43,13 +43,13 @@ Coordination that can be written as a rule costs zero tokens. The fast typed jud
 
 | 模式 | 看板名 | 为什么存在 |
 | --- | --- | --- |
-| `single` | 单上下文 | 所有题目塞进一次调用。小批量最省 token，批量大时准确率崩塌。 |
-| `single-vote` | 同预算投票 | 公平的同预算基线：每题独立解 k 次，多数投票；k 按 token 预算定（bench 里预算 = 本轮 swarm-jev 的总 token）。回答"多花的 token 换来的是协作，还是单纯多采样"。 |
+| `single` | 单 Agent | 所有题目塞进一次调用。小批量最省 token，批量大时准确率崩塌。 |
+| `single-vote` | 单 Agent 投票 | 公平的同预算基线：每题独立解 k 次，多数投票；k 按 token 预算定（bench 里预算 = 本轮 swarm-jev 的总 token）。回答"多花的 token 换来的是协作，还是单纯多采样"。 |
 | `subagent` | Sub-Agent | EvoMap 的 Sub-Agent 基线：每题一个 worker，协调者有损合并。 |
-| `swarm-llm` | LLM 协调蜂群 | 规则表达不了的判断全交给 LLM（升级率恒为 1），衡量 Jev 省下多少。 |
-| `swarm-jev` | Jev 协调蜂群 | 完整方案：规则 + Jev + 按需升级 + 判例回灌。 |
+| `swarm-llm` | LLM 蜂群 | 规则表达不了的判断全交给 LLM（升级率恒为 1），衡量 Jev 省下多少。 |
+| `swarm-jev` | JIS 蜂群 | 完整方案：规则 + Jev + 按需升级 + 判例回灌。 |
 | `swarm-rules` | 规则蜂群 | 消融：保留规则复核、基因交换、信任与隔离，但没有任何裁判调用。衡量 Jev 判断本身的贡献。 |
-| `swarm-solo` | 仅并行 | 消融："单体之和"。只有并行认领和确定性合并，没有复核、没有基因、没有经验库。 |
+| `swarm-solo` | 只并行 | 消融："个体之和"。只有并行认领和确定性合并，没有复核、没有基因、没有经验库。 |
 
 ## 安全模型 / Safety model
 
@@ -136,7 +136,7 @@ EvoMap 节点文件默认在 `~/.config/jis/evomap-node.json`（`EVOMAP_NODE_FIL
    every call metered (ledger, cost cap) · fault switches · events -> WebSocket -> dashboard (web/)
 ```
 
-代码结构：`src/core`（契约、黑板、血缘、账本、指标）、`src/protocol`（消息、注册表、受限句柄、经验库）、`src/providers`（Jev、OpenAI 兼容 LLM、EvoMap、故障开关、模拟器、按模式组装的 provider 栈）、`src/judge`（升级、判例、dispute、校准）、`src/swarm`（cell、蜂群、基因、信任、注入过滤、对抗者）、`src/tasks`（合成题、gsm8k、想法验证）、`src/modes`（基线、同预算投票、研究报告、EvoMap 验证门与发布）、`src/run.ts`、`src/server.ts`、`src/cli`、`web/`。
+代码结构：`src/core`（契约、黑板、血缘、账本、指标）、`src/protocol`（消息、注册表、受限句柄、经验库）、`src/providers`（Jev、OpenAI 兼容 LLM、EvoMap、故障开关、模拟器、按模式组装的 provider 栈）、`src/judge`（升级、判例、dispute、校准）、`src/swarm`（cell、蜂群、基因、信任、注入过滤、对抗者）、`src/tasks`（合成题、gsm8k、想法验证）、`src/modes`（基线、单 Agent 投票、研究报告、EvoMap 验证门与发布）、`src/run.ts`、`src/server.ts`、`src/cli`、`web/`。
 
 ## 局限 / Limitations
 

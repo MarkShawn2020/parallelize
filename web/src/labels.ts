@@ -1,13 +1,13 @@
 import type { CellState, Domain, Mode, ProtocolType, ResearchClaimResult, ResearchReport, TaskStatus } from "../../src/core/types";
 
 export const MODE_LABEL: Record<Mode, string> = {
-  single: "单上下文",
-  "single-vote": "同预算投票",
+  single: "单 Agent",
+  "single-vote": "单 Agent 投票",
   subagent: "Sub-Agent",
-  "swarm-llm": "LLM 协调蜂群",
-  "swarm-jev": "Jev 协调蜂群",
+  "swarm-llm": "LLM 蜂群",
+  "swarm-jev": "JIS 蜂群",
   "swarm-rules": "规则蜂群",
-  "swarm-solo": "仅并行",
+  "swarm-solo": "只并行",
 };
 
 export const MODE_HINT: Record<Mode, string> = {
@@ -15,9 +15,9 @@ export const MODE_HINT: Record<Mode, string> = {
   "single-vote": "同等 Token 预算，每题独立做 k 次后多数投票 same budget, k samples, majority vote",
   subagent: "子 Agent 各做一部分，协调者有损合并 workers + lossy coordinator merge",
   "swarm-llm": "判断型协调全部交给大模型 all judgments by the LLM",
-  "swarm-jev": "Jev 做反射判断，低置信升级大模型 Jev System 1 + LLM escalation",
+  "swarm-jev": "判断先交给 Jev；拿不准的、或与大模型分歧太大的那一类，交给大模型 Jev first; low-confidence or guarded keys go to the LLM",
   "swarm-rules": "固定规则协调，没有判断者 fixed rules, no judge",
-  "swarm-solo": "只并行认领和确定性合并，不复核不传基因 = 单体之和 parallel only = sum of singles",
+  "swarm-solo": "只并行认领和确定性合并，不复核不传基因 = 个体之和 parallel only = sum of singles",
 };
 
 export const CELL_STATE_LABEL: Record<CellState, string> = {

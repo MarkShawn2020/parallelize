@@ -7,7 +7,7 @@ const LINES: Array<{ text: string; tone: string; mark: string }> = [
     mark: "rounded-full border-[3px] border-s1",
   },
   {
-    text: "Jev 拿不准 → 交给大模型裁决 → 复核确认后变成判例，喂回 Jev",
+    text: "Jev 拿不准、调用失败，或某一类判断和大模型分歧太大（校准守卫整类交还）→ 交给大模型",
     tone: "text-s2",
     mark: "rounded-full border-[3px] border-s2",
   },
@@ -26,7 +26,7 @@ export function IdleCard() {
             </li>
           ))}
         </ul>
-        <p className="text-xl font-semibold text-fg">想过的，变成反射。</p>
+        <p className="text-xl font-semibold text-fg">判断交给 Jev，大模型专心解题。</p>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ interface Props {
 }
 
 function describe(d: Decision): string {
-  const tier = d.tier === "system1" ? "S1 反射" : d.escalated ? "S2 思考 (escalated)" : "S2 思考";
+  const tier = d.tier === "system1" ? "S1 Jev" : d.escalated ? "S2 大模型 (escalated)" : "S2 大模型";
   const where = [d.cellId, d.taskId].filter(Boolean).join(" · ");
   const flags = [
     d.precedentsUsed > 0 ? `先例 precedents ${d.precedentsUsed}` : "",

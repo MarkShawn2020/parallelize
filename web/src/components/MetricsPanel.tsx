@@ -114,8 +114,8 @@ function EscalationBar({ metrics: m }: { metrics: LiveMetrics | null }) {
     <div className="flex flex-col gap-1 bg-panel px-3 py-1.5">
       <div className="flex items-baseline justify-between gap-3">
         <div className="truncate text-[11px] tracking-wide text-muted">
-          <span className="text-fg/80">升级率</span> Escalation · <span className="text-s1">S1 反射</span> {m ? fmtInt(m.s1Decisions) : DASH} /{" "}
-          <span className="text-s2">S2 思考</span> {m ? fmtInt(m.s2Decisions) : DASH}
+          <span className="text-fg/80">升级率</span> Escalation · <span className="text-s1">S1 Jev</span> {m ? fmtInt(m.s1Decisions) : DASH} /{" "}
+          <span className="text-s2">S2 大模型</span> {m ? fmtInt(m.s2Decisions) : DASH}
           {m?.jevDown && <span className="ml-2 text-warn">S1 离线</span>}
         </div>
         <div className="font-display text-[clamp(1.3rem,1.6vw,1.9rem)] leading-none font-semibold text-s2 tabular-nums">

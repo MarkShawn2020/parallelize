@@ -36,7 +36,7 @@ export const EVIDENCE_TITLE = `同一个模型 Claude Haiku 4.5 · 同一批 ${E
 export const EVIDENCE_ROWS: readonly EvidenceRow[] = [
   {
     runId: "single-20260923-152044-53da",
-    label: "一个上下文硬做",
+    label: "单 Agent",
     correct: 61,
     total: EVIDENCE_TOTAL,
     costUsd: 0.061681,
@@ -45,7 +45,7 @@ export const EVIDENCE_ROWS: readonly EvidenceRow[] = [
   },
   {
     runId: "swarm-solo-20260923-152701-d944",
-    label: "每题各做各的（= 个体之和）",
+    label: "只并行（个体之和）",
     correct: 77,
     total: EVIDENCE_TOTAL,
     costUsd: 0.114609,
@@ -54,7 +54,7 @@ export const EVIDENCE_ROWS: readonly EvidenceRow[] = [
   },
   {
     runId: "subagent-20260923-152348-20ea",
-    label: "主管分给子 Agent 再汇总",
+    label: "Sub-Agent",
     correct: 77,
     total: EVIDENCE_TOTAL,
     costUsd: 0.239956,
@@ -91,7 +91,7 @@ export const EVIDENCE_ROWS: readonly EvidenceRow[] = [
     style: "accent",
     badge: "本作",
     // Only the question count: on 96 questions alone the paired test gives p = 0.077, not significant.
-    note: "比每题各做各的多对 8 题（85 对 77）",
+    note: "比只并行多对 8 题（85 对 77）",
   },
   {
     runId: "single-vote-20260923-152143-6b9c",
@@ -111,7 +111,7 @@ export const EVIDENCE_FOOTNOTE = "2026-09-23 真实运行 · 原始记录见仓�
 export const EVIDENCE_BOXES: readonly EvidenceBox[] = [
   {
     title: "换一批题再测",
-    lines: ["192 道新题：每题各做各的 84% → 蜂群 93%", "两次合计 288 题：只有蜂群答对 34 题，只有单干答对 9 题 · p < 0.0002"],
+    lines: ["192 道新题：只并行 84% → JIS 蜂群 93%", "两次合计 288 题：JIS 蜂群对、只并行错 34 题，反过来只有 9 题 · p = 0.00017"],
   },
   {
     title: "Jev 的账（主对照这一场）",
@@ -127,7 +127,7 @@ export const EVIDENCE_BOXES: readonly EvidenceBox[] = [
     lines: [
       "今天：8 个 Agent、一块黑板",
       "黑板换 Redis / NATS：上千个 Agent",
-      "判例攒够：蒸馏成本地小分类器",
+      "判断记录攒够：蒸馏成本地小分类器",
       "已发回 EvoMap 1 条经验（新题 A/B 8 对 7，过了验证门）",
     ],
   },

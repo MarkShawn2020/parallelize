@@ -181,7 +181,7 @@ export function RuntimeBar(props: Props) {
         onClick={toggleJev}
         disabled={!running || mode !== "swarm-jev" || !idle}
         tone={jevDown ? "accent" : "warn"}
-        title={mode === "swarm-jev" ? "System 1 故障开关" : "仅 Jev 协调蜂群 swarm-jev only"}
+        title={mode === "swarm-jev" ? "System 1 故障开关" : "仅 JIS 蜂群 swarm-jev only"}
       >
         {jevDown ? "恢复 Jev" : "Jev 离线"}
       </Button>

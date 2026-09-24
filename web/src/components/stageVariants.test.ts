@@ -118,7 +118,9 @@ describe("IdleCard", () => {
     expect(html).toContain("能写成规则的协调 → 规则：原子领题，0 token");
     expect(html).toContain("text-s1");
     expect(html).toContain("text-s2");
-    expect(html).toContain("想过的，变成反射。");
+    expect(html).toContain("判断交给 Jev，大模型专心解题。");
+    expect(html).not.toContain("反射");
+    expect(html).not.toContain("判例");
     expect(html).not.toMatch(/text-xs|text-\[1|truncate/);
   });
 });
