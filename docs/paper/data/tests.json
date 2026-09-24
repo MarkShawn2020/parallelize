@@ -1,0 +1,122 @@
+[
+ {
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "规则",
+  "n": 192,
+  "jevOnly": 14,
+  "otherOnly": 9,
+  "diffPp": 2.6041666666666665,
+  "ci95Pp": [
+   -2.083333333333333,
+   7.291666666666667
+  ],
+  "p": 0.4048728942871094,
+  "pHolm": 1.0
+ },
+ {
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Haiku 4.5",
+  "n": 192,
+  "jevOnly": 12,
+  "otherOnly": 8,
+  "diffPp": 2.0833333333333335,
+  "ci95Pp": [
+   -2.604166666666667,
+   6.770833333333333
+  ],
+  "p": 0.5034446716308594,
+  "pHolm": 1.0
+ },
+ {
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Sonnet 5",
+  "n": 192,
+  "jevOnly": 7,
+  "otherOnly": 9,
+  "diffPp": -1.0416666666666667,
+  "ci95Pp": [
+   -5.208333333333334,
+   3.125
+  ],
+  "p": 0.803619384765625,
+  "pHolm": 1.0
+ },
+ {
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Opus 5",
+  "n": 192,
+  "jevOnly": 11,
+  "otherOnly": 13,
+  "diffPp": -1.0416666666666667,
+  "ci95Pp": [
+   -6.25,
+   4.166666666666666
+  ],
+  "p": 0.8388197422027588,
+  "pHolm": 1.0
+ },
+ {
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "规则",
+  "n": 192,
+  "jevOnly": 8,
+  "otherOnly": 0,
+  "diffPp": 4.166666666666667,
+  "ci95Pp": [
+   1.5625,
+   7.291666666666667
+  ],
+  "p": 0.0078125,
+  "pHolm": 0.03125
+ },
+ {
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Haiku 4.5",
+  "n": 192,
+  "jevOnly": 6,
+  "otherOnly": 0,
+  "diffPp": 3.125,
+  "ci95Pp": [
+   1.0416666666666665,
+   5.729166666666666
+  ],
+  "p": 0.03125,
+  "pHolm": 0.09375
+ },
+ {
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Sonnet 5",
+  "n": 192,
+  "jevOnly": 2,
+  "otherOnly": 0,
+  "diffPp": 1.0416666666666667,
+  "ci95Pp": [
+   0.0,
+   2.604166666666667
+  ],
+  "p": 0.5,
+  "pHolm": 0.5
+ },
+ {
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Opus 5",
+  "n": 192,
+  "jevOnly": 4,
+  "otherOnly": 0,
+  "diffPp": 2.0833333333333335,
+  "ci95Pp": [
+   0.5208333333333333,
+   4.166666666666666
+  ],
+  "p": 0.125,
+  "pHolm": 0.25
+ }
+]

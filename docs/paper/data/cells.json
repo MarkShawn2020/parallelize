@@ -1,0 +1,342 @@
+[
+ {
+  "executor": "Haiku 4.5",
+  "judge": "规则",
+  "correct": 171,
+  "n": 192,
+  "costUsd": 0.16196650000000004,
+  "wallS": 48.5775,
+  "reviews": [
+   16,
+   23
+  ],
+  "solveCalls": 115.5,
+  "judgeUsd": 0.0,
+  "perSeed": {
+   "7": {
+    "correct": 81,
+    "costUsd": 0.15396100000000004,
+    "wallS": 43.781,
+    "reviews": 16,
+    "solveCalls": 112.0
+   },
+   "11": {
+    "correct": 90,
+    "costUsd": 0.16997200000000004,
+    "wallS": 53.374,
+    "reviews": 23,
+    "solveCalls": 119.0
+   }
+  },
+  "runIds": [
+   "swarm-rules-20260923-152617-a404",
+   "swarm-rules-20260924-021956-fc83"
+  ]
+ },
+ {
+  "executor": "Haiku 4.5",
+  "judge": "Jev",
+  "correct": 176,
+  "n": 192,
+  "costUsd": 0.3127384530000001,
+  "wallS": 118.613,
+  "reviews": [
+   108,
+   98
+  ],
+  "solveCalls": 199.0,
+  "judgeUsd": 0.003057452999999999,
+  "perSeed": {
+   "7": {
+    "correct": 88,
+    "costUsd": 0.3230149920000001,
+    "wallS": 124.146,
+    "reviews": 108,
+    "solveCalls": 204.0
+   },
+   "11": {
+    "correct": 88,
+    "costUsd": 0.30246191400000005,
+    "wallS": 113.08,
+    "reviews": 98,
+    "solveCalls": 194.0
+   }
+  },
+  "runIds": [
+   "swarm-jev-20260923-221611-f243",
+   "swarm-jev-20260923-221953-3028"
+  ]
+ },
+ {
+  "executor": "Haiku 4.5",
+  "judge": "Haiku 4.5",
+  "correct": 172,
+  "n": 192,
+  "costUsd": 0.309751,
+  "wallS": 103.328,
+  "reviews": [
+   59,
+   60
+  ],
+  "solveCalls": 155.5,
+  "judgeUsd": 0.08048550000000002,
+  "perSeed": {
+   "7": {
+    "correct": 80,
+    "costUsd": 0.30995100000000003,
+    "wallS": 100.953,
+    "reviews": 59,
+    "solveCalls": 155.0
+   },
+   "11": {
+    "correct": 92,
+    "costUsd": 0.3095509999999999,
+    "wallS": 105.703,
+    "reviews": 60,
+    "solveCalls": 156.0
+   }
+  },
+  "runIds": [
+   "swarm-llm-20260923-152436-632f",
+   "swarm-llm-20260924-022049-e984"
+  ]
+ },
+ {
+  "executor": "Haiku 4.5",
+  "judge": "Sonnet 5",
+  "correct": 178,
+  "n": 192,
+  "costUsd": 0.5647869999999997,
+  "wallS": 130.0495,
+  "reviews": [
+   48,
+   41
+  ],
+  "solveCalls": 140.5,
+  "judgeUsd": 0.3652939999999999,
+  "perSeed": {
+   "7": {
+    "correct": 90,
+    "costUsd": 0.5709779999999995,
+    "wallS": 133.69,
+    "reviews": 48,
+    "solveCalls": 144.0
+   },
+   "11": {
+    "correct": 88,
+    "costUsd": 0.558596,
+    "wallS": 126.409,
+    "reviews": 41,
+    "solveCalls": 137.0
+   }
+  },
+  "runIds": [
+   "swarm-llm-20260924-012542-68fa",
+   "swarm-llm-20260924-022235-f669"
+  ]
+ },
+ {
+  "executor": "Haiku 4.5",
+  "judge": "Opus 5",
+  "correct": 178,
+  "n": 192,
+  "costUsd": 0.7098309999999995,
+  "wallS": 133.179,
+  "reviews": [
+   41,
+   29
+  ],
+  "solveCalls": 131.0,
+  "judgeUsd": 0.5188349999999999,
+  "perSeed": {
+   "7": {
+    "correct": 85,
+    "costUsd": 0.7308309999999991,
+    "wallS": 152.125,
+    "reviews": 41,
+    "solveCalls": 137.0
+   },
+   "11": {
+    "correct": 93,
+    "costUsd": 0.688831,
+    "wallS": 114.233,
+    "reviews": 29,
+    "solveCalls": 125.0
+   }
+  },
+  "runIds": [
+   "swarm-llm-20260924-013902-1169",
+   "swarm-llm-20260924-022442-de7b"
+  ]
+ },
+ {
+  "executor": "Sonnet 5",
+  "judge": "规则",
+  "correct": 183,
+  "n": 192,
+  "costUsd": 0.376178,
+  "wallS": 71.35499999999999,
+  "reviews": [
+   20,
+   19
+  ],
+  "solveCalls": 115.5,
+  "judgeUsd": 0.0,
+  "perSeed": {
+   "7": {
+    "correct": 89,
+    "costUsd": 0.3738019999999999,
+    "wallS": 70.907,
+    "reviews": 20,
+    "solveCalls": 116.0
+   },
+   "11": {
+    "correct": 94,
+    "costUsd": 0.37855400000000006,
+    "wallS": 71.803,
+    "reviews": 19,
+    "solveCalls": 115.0
+   }
+  },
+  "runIds": [
+   "swarm-rules-20260924-015034-ab1c",
+   "swarm-rules-20260924-022637-cf72"
+  ]
+ },
+ {
+  "executor": "Sonnet 5",
+  "judge": "Jev",
+  "correct": 191,
+  "n": 192,
+  "costUsd": 0.7517948530000005,
+  "wallS": 174.1145,
+  "reviews": [
+   100,
+   95
+  ],
+  "solveCalls": 193.5,
+  "judgeUsd": 0.0026038529999999997,
+  "perSeed": {
+   "7": {
+    "correct": 95,
+    "costUsd": 0.7494273979999999,
+    "wallS": 159.124,
+    "reviews": 100,
+    "solveCalls": 196.0
+   },
+   "11": {
+    "correct": 96,
+    "costUsd": 0.7541623080000011,
+    "wallS": 189.105,
+    "reviews": 95,
+    "solveCalls": 191.0
+   }
+  },
+  "runIds": [
+   "swarm-jev-20260924-015146-705f",
+   "swarm-jev-20260924-022749-0ee4"
+  ]
+ },
+ {
+  "executor": "Sonnet 5",
+  "judge": "Haiku 4.5",
+  "correct": 185,
+  "n": 192,
+  "costUsd": 0.6327009999999995,
+  "wallS": 145.838,
+  "reviews": [
+   50,
+   64
+  ],
+  "solveCalls": 153.0,
+  "judgeUsd": 0.07768299999999999,
+  "perSeed": {
+   "7": {
+    "correct": 92,
+    "costUsd": 0.6024279999999997,
+    "wallS": 126.105,
+    "reviews": 50,
+    "solveCalls": 146.0
+   },
+   "11": {
+    "correct": 93,
+    "costUsd": 0.6629739999999993,
+    "wallS": 165.571,
+    "reviews": 64,
+    "solveCalls": 160.0
+   }
+  },
+  "runIds": [
+   "swarm-llm-20260924-015425-8627",
+   "swarm-llm-20260924-023058-f69b"
+  ]
+ },
+ {
+  "executor": "Sonnet 5",
+  "judge": "Sonnet 5",
+  "correct": 189,
+  "n": 192,
+  "costUsd": 0.7400779999999997,
+  "wallS": 149.78199999999998,
+  "reviews": [
+   38,
+   28
+  ],
+  "solveCalls": 129.0,
+  "judgeUsd": 0.312179,
+  "perSeed": {
+   "7": {
+    "correct": 93,
+    "costUsd": 0.7463359999999998,
+    "wallS": 153.594,
+    "reviews": 38,
+    "solveCalls": 134.0
+   },
+   "11": {
+    "correct": 96,
+    "costUsd": 0.7338199999999996,
+    "wallS": 145.97,
+    "reviews": 28,
+    "solveCalls": 124.0
+   }
+  },
+  "runIds": [
+   "swarm-llm-20260924-015631-c984",
+   "swarm-llm-20260924-023344-f0c0"
+  ]
+ },
+ {
+  "executor": "Sonnet 5",
+  "judge": "Opus 5",
+  "correct": 187,
+  "n": 192,
+  "costUsd": 0.8427884999999999,
+  "wallS": 124.9625,
+  "reviews": [
+   24,
+   21
+  ],
+  "solveCalls": 118.5,
+  "judgeUsd": 0.4579424999999999,
+  "perSeed": {
+   "7": {
+    "correct": 93,
+    "costUsd": 0.8362759999999999,
+    "wallS": 123.347,
+    "reviews": 24,
+    "solveCalls": 120.0
+   },
+   "11": {
+    "correct": 94,
+    "costUsd": 0.849301,
+    "wallS": 126.578,
+    "reviews": 21,
+    "solveCalls": 117.0
+   }
+  },
+  "runIds": [
+   "swarm-llm-20260924-015905-1b22",
+   "swarm-llm-20260924-023610-f5ad"
+  ]
+ }
+]

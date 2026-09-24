@@ -1,0 +1,22 @@
+{
+ "Jev": {
+  "calls": 596,
+  "usdPerCall": 1.8997671140939625e-05,
+  "medianLatencyS": 0.4545570624999309
+ },
+ "Haiku 4.5": {
+  "calls": 587,
+  "usdPerCall": 0.000538904599659284,
+  "medianLatencyS": 1.3014882910000014
+ },
+ "Sonnet 5": {
+  "calls": 579,
+  "usdPerCall": 0.002340148531951641,
+  "medianLatencyS": 3.387823292000001
+ },
+ "Opus 5": {
+  "calls": 541,
+  "usdPerCall": 0.0036110073937153436,
+  "medianLatencyS": 3.032318500000001
+ }
+}

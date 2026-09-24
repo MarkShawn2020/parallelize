@@ -1,0 +1,62 @@
+[
+ {
+  "executor": "Haiku 4.5",
+  "replaced": "Haiku 4.5",
+  "judgeSavingUsd": 0.07742804700000001,
+  "extraSolves": 43.5,
+  "extraSolveUsd": 0.07675823437217225,
+  "predictedNetUsd": -0.0006698126278277677,
+  "observedNetUsd": 0.0029874530000000843,
+  "reboundRatio": 0.9913492248121955
+ },
+ {
+  "executor": "Haiku 4.5",
+  "replaced": "Sonnet 5",
+  "judgeSavingUsd": 0.3622365469999999,
+  "extraSolves": 58.5,
+  "extraSolveUsd": 0.10322659105223164,
+  "predictedNetUsd": -0.25900995594776827,
+  "observedNetUsd": -0.2520485469999996,
+  "reboundRatio": 0.284970116646545
+ },
+ {
+  "executor": "Haiku 4.5",
+  "replaced": "Opus 5",
+  "judgeSavingUsd": 0.5157775469999999,
+  "extraSolves": 68.0,
+  "extraSolveUsd": 0.11998988361626925,
+  "predictedNetUsd": -0.3957876633837306,
+  "observedNetUsd": -0.39709254699999946,
+  "reboundRatio": 0.2326388271730434
+ },
+ {
+  "executor": "Sonnet 5",
+  "replaced": "Haiku 4.5",
+  "judgeSavingUsd": 0.07507914699999998,
+  "extraSolves": 40.5,
+  "extraSolveUsd": 0.1957397683347161,
+  "predictedNetUsd": 0.12066062133471611,
+  "observedNetUsd": 0.11909385300000097,
+  "reboundRatio": 2.6071123095566886
+ },
+ {
+  "executor": "Sonnet 5",
+  "replaced": "Sonnet 5",
+  "judgeSavingUsd": 0.309575147,
+  "extraSolves": 64.5,
+  "extraSolveUsd": 0.31173370512565896,
+  "predictedNetUsd": 0.0021585581256589603,
+  "observedNetUsd": 0.011716853000000804,
+  "reboundRatio": 1.0069726466952431
+ },
+ {
+  "executor": "Sonnet 5",
+  "replaced": "Opus 5",
+  "judgeSavingUsd": 0.45533864699999993,
+  "extraSolves": 75.0,
+  "extraSolveUsd": 0.36248105247169643,
+  "predictedNetUsd": -0.0928575945283035,
+  "observedNetUsd": -0.09099364699999946,
+  "reboundRatio": 0.7960691561322633
+ }
+]
