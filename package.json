@@ -2,7 +2,7 @@
   "name": "jis",
   "version": "0.1.0",
   "private": true,
-  "description": "System-1 swarm: Jev handles coordination reflexes, LLM handles hard thinking. EvoTavern 4th SECTION 9.",
+  "description": "System-1 swarm: Jev handles coordination reflexes, LLM handles hard thinking.",
   "type": "module",
   "license": "Apache-2.0",
   "engines": {

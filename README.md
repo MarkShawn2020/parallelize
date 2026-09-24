@@ -1,6 +1,6 @@
 # JIS · Jev in the Shell
 
-EvoTavern 第四届黑客松 SECTION 9（多 Agent 蜂群协作）参赛作品。
+开源的多 Agent 蜂群协作框架。
 
 ## 一句话 / Thesis
 
@@ -30,7 +30,7 @@ Coordination that can be written as a rule costs zero tokens. The fast typed jud
 - EvoMap：通过留出集 A/B（8/8 对 7/8）的一条 Gene 已发布：<https://evomap.ai/asset/sha256:f09e2dd70fd8ad55c1110922f679c80bd59b08ae7f4f26b273746354888e333c>
 - 完整说明见 [docs/技术说明.md](docs/技术说明.md)。
 
-## 评审维度对照 / SECTION 9 rubric
+## 设计维度 / Design dimensions
 
 | 维度 | 机制 | 在哪里看 |
 | --- | --- | --- |

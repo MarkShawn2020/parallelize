@@ -214,8 +214,7 @@ export default function App() {
       ) : (
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border border-grid bg-panel/90 px-3 py-1.5">
         <h1 className="font-display text-2xl font-semibold tracking-[0.18em]">
-          <span className="text-accent">JIS</span> <span className="text-fg">JEV IN THE SHELL</span>{" "}
-          <span className="text-muted">· SECTION 9</span>
+          <span className="text-accent">JIS</span> <span className="text-fg">JEV IN THE SHELL</span>
         </h1>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm tabular-nums">
           {view.mode && (

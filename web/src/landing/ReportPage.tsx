@@ -84,7 +84,7 @@ export function ReportPage({ section }: { section: string | null }) {
           <span className="border border-grid px-2 py-0.5 text-fg/80">作者 手工川</span>
         </div>
         <aside className="max-w-[860px] border-l-4 border-accent bg-panel/90 px-4 py-3 text-base leading-relaxed text-fg/85">
-          这是开赛前（2026-09-15）写的选型调研，当时按组队参赛做计划，文中的「本队」「分工建议」反映的是那时的设想。最终作品 JIS
+          这是 JIS 立项前（2026-09-15）写的多智能体选型调研，当时按黑客松组队参赛做计划，文中的「本队」「分工建议」反映的是那时的设想。JIS
           吸收了它的几个判断：黑板领题、结果验证后才进主干、给每个答案记来源、同一任务同一模型并排对照；建议里的 NATS 总线和 Yoda
           底座没有采用。网站版删去了一段私人聊天引文、本机环境细节和未发布数据文件的路径，相应几处措辞改得中性，决策图改用 Mermaid 重画；论证、数据和引用未改。
         </aside>

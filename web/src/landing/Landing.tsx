@@ -130,7 +130,7 @@ function FrameworkPage() {
       <section className="relative overflow-hidden">
         <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-20 md:py-28">
           <div className="flex flex-col gap-5">
-            <span className="font-mono text-sm tracking-widest text-accent">EvoTavern 4th · SECTION 9 多 Agent 蜂群协作 · P2501 Team</span>
+            <span className="font-mono text-sm tracking-widest text-accent">开源 · 多 Agent 蜂群协作框架</span>
             <h1 className="font-display text-7xl leading-none font-bold tracking-[0.06em] text-fg md:text-8xl">
               <span className="text-accent">JIS</span> · Jev in the Shell
             </h1>
@@ -494,7 +494,7 @@ export function Landing({ liveRunning }: Props) {
       <footer className="border-t border-grid py-10">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-8 gap-y-4 px-4">
           <img src="/brand/shougongchuan-logo-white.png" alt="手工川" className="h-9 w-auto" />
-          <span className="text-sm text-fg/75">P2501 Team · 手工川 · Lovstudio.AI · EvoTavern 4th</span>
+          <span className="text-sm text-fg/75">手工川 · Lovstudio.AI</span>
           <span className="flex-1" />
           <a href={REPO} className="text-sm text-fg/75 hover:text-fg">
             GitHub
