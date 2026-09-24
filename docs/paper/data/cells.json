@@ -2,15 +2,23 @@
  {
   "executor": "Haiku 4.5",
   "judge": "规则",
-  "correct": 171,
-  "n": 192,
-  "costUsd": 0.16196650000000004,
-  "wallS": 48.5775,
+  "correct": 332,
+  "n": 384,
+  "costUsd": 0.16439849999999998,
+  "wallS": 49.19775,
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
   "reviews": [
    16,
-   23
+   23,
+   25,
+   24
   ],
-  "solveCalls": 115.5,
+  "solveCalls": 118.0,
   "judgeUsd": 0.0,
   "perSeed": {
    "7": {
@@ -18,169 +26,307 @@
     "costUsd": 0.15396100000000004,
     "wallS": 43.781,
     "reviews": 16,
-    "solveCalls": 112.0
+    "solveCalls": 112.0,
+    "judgeCalls": 0
    },
    "11": {
     "correct": 90,
     "costUsd": 0.16997200000000004,
     "wallS": 53.374,
     "reviews": 23,
-    "solveCalls": 119.0
+    "solveCalls": 119.0,
+    "judgeCalls": 0
+   },
+   "13": {
+    "correct": 76,
+    "costUsd": 0.168779,
+    "wallS": 49.792,
+    "reviews": 25,
+    "solveCalls": 121.0,
+    "judgeCalls": 0
+   },
+   "17": {
+    "correct": 85,
+    "costUsd": 0.16488199999999983,
+    "wallS": 49.844,
+    "reviews": 24,
+    "solveCalls": 120.0,
+    "judgeCalls": 0
    }
   },
   "runIds": [
    "swarm-rules-20260923-152617-a404",
-   "swarm-rules-20260924-021956-fc83"
+   "swarm-rules-20260924-021956-fc83",
+   "swarm-rules-20260924-142044-5383",
+   "swarm-rules-20260924-144117-80d3"
   ]
  },
  {
   "executor": "Haiku 4.5",
   "judge": "Jev",
-  "correct": 176,
-  "n": 192,
-  "costUsd": 0.3127384530000001,
-  "wallS": 118.613,
+  "correct": 351,
+  "n": 384,
+  "costUsd": 0.31961499950000005,
+  "wallS": 116.29849999999999,
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
   "reviews": [
    108,
-   98
+   98,
+   111,
+   105
   ],
-  "solveCalls": 199.0,
-  "judgeUsd": 0.003057452999999999,
+  "solveCalls": 201.5,
+  "judgeUsd": 0.003067249499999999,
   "perSeed": {
    "7": {
     "correct": 88,
     "costUsd": 0.3230149920000001,
     "wallS": 124.146,
     "reviews": 108,
-    "solveCalls": 204.0
+    "solveCalls": 204.0,
+    "judgeCalls": 173
    },
    "11": {
     "correct": 88,
     "costUsd": 0.30246191400000005,
     "wallS": 113.08,
     "reviews": 98,
-    "solveCalls": 194.0
+    "solveCalls": 194.0,
+    "judgeCalls": 152
+   },
+   "13": {
+    "correct": 87,
+    "costUsd": 0.33702273000000005,
+    "wallS": 115.314,
+    "reviews": 111,
+    "solveCalls": 207.0,
+    "judgeCalls": 166
+   },
+   "17": {
+    "correct": 88,
+    "costUsd": 0.31596036199999994,
+    "wallS": 112.654,
+    "reviews": 105,
+    "solveCalls": 201.0,
+    "judgeCalls": 155
    }
   },
   "runIds": [
    "swarm-jev-20260923-221611-f243",
-   "swarm-jev-20260923-221953-3028"
+   "swarm-jev-20260923-221953-3028",
+   "swarm-jev-20260924-142134-eea0",
+   "swarm-jev-20260924-144207-06b8"
   ]
  },
  {
   "executor": "Haiku 4.5",
   "judge": "Haiku 4.5",
-  "correct": 172,
-  "n": 192,
-  "costUsd": 0.309751,
-  "wallS": 103.328,
+  "correct": 334,
+  "n": 384,
+  "costUsd": 0.3172065,
+  "wallS": 108.959,
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
   "reviews": [
    59,
-   60
+   60,
+   64,
+   61
   ],
-  "solveCalls": 155.5,
-  "judgeUsd": 0.08048550000000002,
+  "solveCalls": 157.0,
+  "judgeUsd": 0.07877900000000002,
   "perSeed": {
    "7": {
     "correct": 80,
     "costUsd": 0.30995100000000003,
     "wallS": 100.953,
     "reviews": 59,
-    "solveCalls": 155.0
+    "solveCalls": 155.0,
+    "judgeCalls": 155
    },
    "11": {
     "correct": 92,
     "costUsd": 0.3095509999999999,
     "wallS": 105.703,
     "reviews": 60,
-    "solveCalls": 156.0
+    "solveCalls": 156.0,
+    "judgeCalls": 148
+   },
+   "13": {
+    "correct": 76,
+    "costUsd": 0.3302160000000002,
+    "wallS": 122.018,
+    "reviews": 64,
+    "solveCalls": 160.0,
+    "judgeCalls": 149
+   },
+   "17": {
+    "correct": 86,
+    "costUsd": 0.3191079999999999,
+    "wallS": 107.162,
+    "reviews": 61,
+    "solveCalls": 157.0,
+    "judgeCalls": 142
    }
   },
   "runIds": [
    "swarm-llm-20260923-152436-632f",
-   "swarm-llm-20260924-022049-e984"
+   "swarm-llm-20260924-022049-e984",
+   "swarm-llm-20260924-142330-4c8d",
+   "swarm-llm-20260924-144400-67c2"
   ]
  },
  {
   "executor": "Haiku 4.5",
   "judge": "Sonnet 5",
-  "correct": 178,
-  "n": 192,
-  "costUsd": 0.5647869999999997,
-  "wallS": 130.0495,
+  "correct": 349,
+  "n": 384,
+  "costUsd": 0.5606104999999999,
+  "wallS": 136.49125,
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
   "reviews": [
+   48,
+   41,
    48,
    41
   ],
   "solveCalls": 140.5,
-  "judgeUsd": 0.3652939999999999,
+  "judgeUsd": 0.353662,
   "perSeed": {
    "7": {
     "correct": 90,
     "costUsd": 0.5709779999999995,
     "wallS": 133.69,
     "reviews": 48,
-    "solveCalls": 144.0
+    "solveCalls": 144.0,
+    "judgeCalls": 155
    },
    "11": {
     "correct": 88,
     "costUsd": 0.558596,
     "wallS": 126.409,
     "reviews": 41,
-    "solveCalls": 137.0
+    "solveCalls": 137.0,
+    "judgeCalls": 154
+   },
+   "13": {
+    "correct": 88,
+    "costUsd": 0.5818999999999999,
+    "wallS": 166.818,
+    "reviews": 48,
+    "solveCalls": 144.0,
+    "judgeCalls": 149
+   },
+   "17": {
+    "correct": 83,
+    "costUsd": 0.5309680000000003,
+    "wallS": 119.048,
+    "reviews": 41,
+    "solveCalls": 137.0,
+    "judgeCalls": 133
    }
   },
   "runIds": [
    "swarm-llm-20260924-012542-68fa",
-   "swarm-llm-20260924-022235-f669"
+   "swarm-llm-20260924-022235-f669",
+   "swarm-llm-20260924-142532-ec02",
+   "swarm-llm-20260924-144548-5800"
   ]
  },
  {
   "executor": "Haiku 4.5",
   "judge": "Opus 5",
-  "correct": 178,
-  "n": 192,
-  "costUsd": 0.7098309999999995,
-  "wallS": 133.179,
+  "correct": 343,
+  "n": 384,
+  "costUsd": 0.7011337499999996,
+  "wallS": 121.95425,
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
   "reviews": [
    41,
-   29
+   29,
+   29,
+   31
   ],
-  "solveCalls": 131.0,
-  "judgeUsd": 0.5188349999999999,
+  "solveCalls": 128.5,
+  "judgeUsd": 0.5149799999999998,
   "perSeed": {
    "7": {
     "correct": 85,
     "costUsd": 0.7308309999999991,
     "wallS": 152.125,
     "reviews": 41,
-    "solveCalls": 137.0
+    "solveCalls": 137.0,
+    "judgeCalls": 139
    },
    "11": {
     "correct": 93,
     "costUsd": 0.688831,
     "wallS": 114.233,
     "reviews": 29,
-    "solveCalls": 125.0
+    "solveCalls": 125.0,
+    "judgeCalls": 140
+   },
+   "13": {
+    "correct": 78,
+    "costUsd": 0.6543059999999999,
+    "wallS": 108.595,
+    "reviews": 29,
+    "solveCalls": 125.0,
+    "judgeCalls": 128
+   },
+   "17": {
+    "correct": 87,
+    "costUsd": 0.7305669999999992,
+    "wallS": 112.864,
+    "reviews": 31,
+    "solveCalls": 127.0,
+    "judgeCalls": 155
    }
   },
   "runIds": [
    "swarm-llm-20260924-013902-1169",
-   "swarm-llm-20260924-022442-de7b"
+   "swarm-llm-20260924-022442-de7b",
+   "swarm-llm-20260924-142820-3ae5",
+   "swarm-llm-20260924-144747-c11e"
   ]
  },
  {
   "executor": "Sonnet 5",
   "judge": "规则",
-  "correct": 183,
-  "n": 192,
-  "costUsd": 0.376178,
-  "wallS": 71.35499999999999,
+  "correct": 276,
+  "n": 288,
+  "costUsd": 0.3693546666666667,
+  "wallS": 73.29899999999999,
+  "seeds": [
+   7,
+   11,
+   13
+  ],
   "reviews": [
    20,
+   19,
    19
   ],
-  "solveCalls": 115.5,
+  "solveCalls": 115.33333333333333,
   "judgeUsd": 0.0,
   "perSeed": {
    "7": {
@@ -188,155 +334,234 @@
     "costUsd": 0.3738019999999999,
     "wallS": 70.907,
     "reviews": 20,
-    "solveCalls": 116.0
+    "solveCalls": 116.0,
+    "judgeCalls": 0
    },
    "11": {
     "correct": 94,
     "costUsd": 0.37855400000000006,
     "wallS": 71.803,
     "reviews": 19,
-    "solveCalls": 115.0
+    "solveCalls": 115.0,
+    "judgeCalls": 0
+   },
+   "13": {
+    "correct": 93,
+    "costUsd": 0.355708,
+    "wallS": 77.187,
+    "reviews": 19,
+    "solveCalls": 115.0,
+    "judgeCalls": 0
    }
   },
   "runIds": [
    "swarm-rules-20260924-015034-ab1c",
-   "swarm-rules-20260924-022637-cf72"
+   "swarm-rules-20260924-022637-cf72",
+   "swarm-rules-20260924-143009-be09"
   ]
  },
  {
   "executor": "Sonnet 5",
   "judge": "Jev",
-  "correct": 191,
-  "n": 192,
-  "costUsd": 0.7517948530000005,
-  "wallS": 174.1145,
+  "correct": 282,
+  "n": 288,
+  "costUsd": 0.7460195160000002,
+  "wallS": 173.32000000000002,
+  "seeds": [
+   7,
+   11,
+   13
+  ],
   "reviews": [
    100,
-   95
+   95,
+   94
   ],
-  "solveCalls": 193.5,
-  "judgeUsd": 0.0026038529999999997,
+  "solveCalls": 192.33333333333334,
+  "judgeUsd": 0.0026235159999999993,
   "perSeed": {
    "7": {
     "correct": 95,
     "costUsd": 0.7494273979999999,
     "wallS": 159.124,
     "reviews": 100,
-    "solveCalls": 196.0
+    "solveCalls": 196.0,
+    "judgeCalls": 136
    },
    "11": {
     "correct": 96,
     "costUsd": 0.7541623080000011,
     "wallS": 189.105,
     "reviews": 95,
-    "solveCalls": 191.0
+    "solveCalls": 191.0,
+    "judgeCalls": 135
+   },
+   "13": {
+    "correct": 91,
+    "costUsd": 0.7344688419999997,
+    "wallS": 171.731,
+    "reviews": 94,
+    "solveCalls": 190.0,
+    "judgeCalls": 140
    }
   },
   "runIds": [
    "swarm-jev-20260924-015146-705f",
-   "swarm-jev-20260924-022749-0ee4"
+   "swarm-jev-20260924-022749-0ee4",
+   "swarm-jev-20260924-143126-843f"
   ]
  },
  {
   "executor": "Sonnet 5",
   "judge": "Haiku 4.5",
-  "correct": 185,
-  "n": 192,
-  "costUsd": 0.6327009999999995,
-  "wallS": 145.838,
+  "correct": 279,
+  "n": 288,
+  "costUsd": 0.6482773333333332,
+  "wallS": 145.79333333333332,
+  "seeds": [
+   7,
+   11,
+   13
+  ],
   "reviews": [
    50,
-   64
+   64,
+   65
   ],
-  "solveCalls": 153.0,
-  "judgeUsd": 0.07768299999999999,
+  "solveCalls": 155.66666666666666,
+  "judgeUsd": 0.07562799999999999,
   "perSeed": {
    "7": {
     "correct": 92,
     "costUsd": 0.6024279999999997,
     "wallS": 126.105,
     "reviews": 50,
-    "solveCalls": 146.0
+    "solveCalls": 146.0,
+    "judgeCalls": 151
    },
    "11": {
     "correct": 93,
     "costUsd": 0.6629739999999993,
     "wallS": 165.571,
     "reviews": 64,
-    "solveCalls": 160.0
+    "solveCalls": 160.0,
+    "judgeCalls": 133
+   },
+   "13": {
+    "correct": 94,
+    "costUsd": 0.6794300000000003,
+    "wallS": 145.704,
+    "reviews": 65,
+    "solveCalls": 161.0,
+    "judgeCalls": 128
    }
   },
   "runIds": [
    "swarm-llm-20260924-015425-8627",
-   "swarm-llm-20260924-023058-f69b"
+   "swarm-llm-20260924-023058-f69b",
+   "swarm-llm-20260924-143419-e2f2"
   ]
  },
  {
   "executor": "Sonnet 5",
   "judge": "Sonnet 5",
-  "correct": 189,
-  "n": 192,
-  "costUsd": 0.7400779999999997,
-  "wallS": 149.78199999999998,
+  "correct": 283,
+  "n": 288,
+  "costUsd": 0.745384,
+  "wallS": 144.80499999999998,
+  "seeds": [
+   7,
+   11,
+   13
+  ],
   "reviews": [
    38,
-   28
+   28,
+   35
   ],
-  "solveCalls": 129.0,
-  "judgeUsd": 0.312179,
+  "solveCalls": 129.66666666666666,
+  "judgeUsd": 0.30798733333333334,
   "perSeed": {
    "7": {
     "correct": 93,
     "costUsd": 0.7463359999999998,
     "wallS": 153.594,
     "reviews": 38,
-    "solveCalls": 134.0
+    "solveCalls": 134.0,
+    "judgeCalls": 125
    },
    "11": {
     "correct": 96,
     "costUsd": 0.7338199999999996,
     "wallS": 145.97,
     "reviews": 28,
-    "solveCalls": 124.0
+    "solveCalls": 124.0,
+    "judgeCalls": 145
+   },
+   "13": {
+    "correct": 94,
+    "costUsd": 0.7559960000000008,
+    "wallS": 134.851,
+    "reviews": 35,
+    "solveCalls": 131.0,
+    "judgeCalls": 126
    }
   },
   "runIds": [
    "swarm-llm-20260924-015631-c984",
-   "swarm-llm-20260924-023344-f0c0"
+   "swarm-llm-20260924-023344-f0c0",
+   "swarm-llm-20260924-143645-efd1"
   ]
  },
  {
   "executor": "Sonnet 5",
   "judge": "Opus 5",
-  "correct": 187,
-  "n": 192,
-  "costUsd": 0.8427884999999999,
-  "wallS": 124.9625,
+  "correct": 280,
+  "n": 288,
+  "costUsd": 0.8697989999999999,
+  "wallS": 128.91933333333336,
+  "seeds": [
+   7,
+   11,
+   13
+  ],
   "reviews": [
    24,
-   21
+   21,
+   28
   ],
-  "solveCalls": 118.5,
-  "judgeUsd": 0.4579424999999999,
+  "solveCalls": 120.33333333333333,
+  "judgeUsd": 0.4763583333333332,
   "perSeed": {
    "7": {
     "correct": 93,
     "costUsd": 0.8362759999999999,
     "wallS": 123.347,
     "reviews": 24,
-    "solveCalls": 120.0
+    "solveCalls": 120.0,
+    "judgeCalls": 125
    },
    "11": {
     "correct": 94,
     "costUsd": 0.849301,
     "wallS": 126.578,
     "reviews": 21,
-    "solveCalls": 117.0
+    "solveCalls": 117.0,
+    "judgeCalls": 137
+   },
+   "13": {
+    "correct": 93,
+    "costUsd": 0.9238199999999996,
+    "wallS": 136.833,
+    "reviews": 28,
+    "solveCalls": 124.0,
+    "judgeCalls": 149
    }
   },
   "runIds": [
    "swarm-llm-20260924-015905-1b22",
-   "swarm-llm-20260924-023610-f5ad"
+   "swarm-llm-20260924-023610-f5ad",
+   "swarm-llm-20260924-143900-13e7"
   ]
  }
 ]

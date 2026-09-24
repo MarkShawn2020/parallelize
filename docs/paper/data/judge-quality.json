@@ -1,0 +1,396 @@
+{
+ "threshold": 0.4,
+ "gradedAccepted": 3360,
+ "verify": [
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Jev",
+   "judgments": 310,
+   "wrongProposals": 38,
+   "flagRate": 0.9612903225806452,
+   "hitRate": 0.9736842105263158,
+   "falseAlarmRate": 0.9595588235294118,
+   "auc": 0.47769930340557276,
+   "auc95": [
+    0.3809500773993808,
+    0.5794311145510835
+   ]
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Jev",
+   "judgments": 224,
+   "wrongProposals": 11,
+   "flagRate": 0.9285714285714286,
+   "hitRate": 1.0,
+   "falseAlarmRate": 0.9248826291079812,
+   "auc": 0.558258642765685,
+   "auc95": [
+    0.4084507042253521,
+    0.7114810072556551
+   ]
+  },
+  {
+   "executor": "pooled",
+   "judge": "Jev",
+   "judgments": 534,
+   "wrongProposals": 49,
+   "flagRate": 0.947565543071161,
+   "hitRate": 0.9795918367346939,
+   "falseAlarmRate": 0.9443298969072165,
+   "auc": 0.5226593730275615,
+   "auc95": [
+    0.4382705659583421,
+    0.6095729013254787
+   ]
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Haiku 4.5",
+   "judgments": 305,
+   "wrongProposals": 44,
+   "flagRate": 0.5344262295081967,
+   "hitRate": 0.5454545454545454,
+   "falseAlarmRate": 0.5325670498084292,
+   "auc": 0.5015673981191222,
+   "auc95": [
+    0.4106583072100313,
+    0.58250609543713
+   ]
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Haiku 4.5",
+   "judgments": 227,
+   "wrongProposals": 9,
+   "flagRate": 0.5154185022026432,
+   "hitRate": 0.5555555555555556,
+   "falseAlarmRate": 0.5137614678899083,
+   "auc": 0.5114678899082569,
+   "auc95": [
+    0.35015290519877673,
+    0.6783893985728848
+   ]
+  },
+  {
+   "executor": "pooled",
+   "judge": "Haiku 4.5",
+   "judgments": 532,
+   "wrongProposals": 53,
+   "flagRate": 0.5263157894736842,
+   "hitRate": 0.5471698113207547,
+   "falseAlarmRate": 0.524008350730689,
+   "auc": 0.5171544491275062,
+   "auc95": [
+    0.44347500689329183,
+    0.5909914523181156
+   ]
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Sonnet 5",
+   "judgments": 313,
+   "wrongProposals": 46,
+   "flagRate": 0.2747603833865815,
+   "hitRate": 0.8913043478260869,
+   "falseAlarmRate": 0.16853932584269662,
+   "auc": 0.9157303370786517,
+   "auc95": [
+    0.8623188405797102,
+    0.9601449275362319
+   ]
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Sonnet 5",
+   "judgments": 229,
+   "wrongProposals": 7,
+   "flagRate": 0.1572052401746725,
+   "hitRate": 0.8571428571428571,
+   "falseAlarmRate": 0.13513513513513514,
+   "auc": 0.888030888030888,
+   "auc95": [
+    0.7519305019305019,
+    0.9745817245817245
+   ]
+  },
+  {
+   "executor": "pooled",
+   "judge": "Sonnet 5",
+   "judgments": 542,
+   "wrongProposals": 53,
+   "flagRate": 0.22509225092250923,
+   "hitRate": 0.8867924528301887,
+   "falseAlarmRate": 0.15337423312883436,
+   "auc": 0.9141297218042211,
+   "auc95": [
+    0.8649149207084154,
+    0.9533317899448238
+   ]
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Opus 5",
+   "judgments": 306,
+   "wrongProposals": 41,
+   "flagRate": 0.15359477124183007,
+   "hitRate": 0.5121951219512195,
+   "falseAlarmRate": 0.09811320754716982,
+   "auc": 0.7672802577082375,
+   "auc95": [
+    0.6786010124252186,
+    0.8472158306488725
+   ]
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Opus 5",
+   "judgments": 237,
+   "wrongProposals": 9,
+   "flagRate": 0.08438818565400844,
+   "hitRate": 0.6666666666666666,
+   "falseAlarmRate": 0.06140350877192982,
+   "auc": 0.851364522417154,
+   "auc95": [
+    0.7049220272904484,
+    0.9700292397660819
+   ]
+  },
+  {
+   "executor": "pooled",
+   "judge": "Opus 5",
+   "judgments": 543,
+   "wrongProposals": 50,
+   "flagRate": 0.12338858195211787,
+   "hitRate": 0.54,
+   "falseAlarmRate": 0.08113590263691683,
+   "auc": 0.7921906693711968,
+   "auc95": [
+    0.7187018255578094,
+    0.8609127789046653
+   ]
+  }
+ ],
+ "dispute": [
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Jev",
+   "disputes": 55,
+   "unclear": 52,
+   "oneCorrect": 41,
+   "pickedCorrect": 2,
+   "pickedWrong": 1,
+   "oneCorrectUnclear": 38
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Jev",
+   "disputes": 23,
+   "unclear": 18,
+   "oneCorrect": 20,
+   "pickedCorrect": 4,
+   "pickedWrong": 1,
+   "oneCorrectUnclear": 15
+  },
+  {
+   "executor": "pooled",
+   "judge": "Jev",
+   "disputes": 78,
+   "unclear": 70,
+   "oneCorrect": 61,
+   "pickedCorrect": 6,
+   "pickedWrong": 2,
+   "oneCorrectUnclear": 53
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Haiku 4.5",
+   "disputes": 25,
+   "unclear": 2,
+   "oneCorrect": 19,
+   "pickedCorrect": 5,
+   "pickedWrong": 12,
+   "oneCorrectUnclear": 2
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Haiku 4.5",
+   "disputes": 8,
+   "unclear": 1,
+   "oneCorrect": 8,
+   "pickedCorrect": 5,
+   "pickedWrong": 2,
+   "oneCorrectUnclear": 1
+  },
+  {
+   "executor": "pooled",
+   "judge": "Haiku 4.5",
+   "disputes": 33,
+   "unclear": 3,
+   "oneCorrect": 27,
+   "pickedCorrect": 10,
+   "pickedWrong": 14,
+   "oneCorrectUnclear": 3
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Sonnet 5",
+   "disputes": 37,
+   "unclear": 21,
+   "oneCorrect": 26,
+   "pickedCorrect": 16,
+   "pickedWrong": 0,
+   "oneCorrectUnclear": 10
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Sonnet 5",
+   "disputes": 13,
+   "unclear": 7,
+   "oneCorrect": 11,
+   "pickedCorrect": 6,
+   "pickedWrong": 0,
+   "oneCorrectUnclear": 5
+  },
+  {
+   "executor": "pooled",
+   "judge": "Sonnet 5",
+   "disputes": 50,
+   "unclear": 28,
+   "oneCorrect": 37,
+   "pickedCorrect": 22,
+   "pickedWrong": 0,
+   "oneCorrectUnclear": 15
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Opus 5",
+   "disputes": 20,
+   "unclear": 5,
+   "oneCorrect": 16,
+   "pickedCorrect": 11,
+   "pickedWrong": 3,
+   "oneCorrectUnclear": 2
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Opus 5",
+   "disputes": 11,
+   "unclear": 2,
+   "oneCorrect": 9,
+   "pickedCorrect": 7,
+   "pickedWrong": 1,
+   "oneCorrectUnclear": 1
+  },
+  {
+   "executor": "pooled",
+   "judge": "Opus 5",
+   "disputes": 31,
+   "unclear": 7,
+   "oneCorrect": 25,
+   "pickedCorrect": 18,
+   "pickedWrong": 4,
+   "oneCorrectUnclear": 3
+  }
+ ],
+ "reviewReasons": [
+  {
+   "executor": "Haiku 4.5",
+   "judge": "规则",
+   "perRun": {
+    "audit": 10.75,
+    "dispute": 1.5,
+    "probation": 9.75
+   }
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Jev",
+   "perRun": {
+    "audit": 9.5,
+    "dispute": 12.5,
+    "judge": 74.5,
+    "probation": 9.0
+   }
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Haiku 4.5",
+   "perRun": {
+    "audit": 10.5,
+    "dispute": 0.5,
+    "judge": 40.75,
+    "probation": 9.25
+   }
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Sonnet 5",
+   "perRun": {
+    "audit": 8.75,
+    "dispute": 5.25,
+    "judge": 21.5,
+    "probation": 9.0
+   }
+  },
+  {
+   "executor": "Haiku 4.5",
+   "judge": "Opus 5",
+   "perRun": {
+    "audit": 10.5,
+    "dispute": 1.25,
+    "judge": 11.75,
+    "probation": 9.0
+   }
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "规则",
+   "perRun": {
+    "audit": 7.0,
+    "dispute": 2.0,
+    "probation": 10.333333333333334
+   }
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Jev",
+   "perRun": {
+    "audit": 12.0,
+    "dispute": 5.666666666666667,
+    "judge": 69.33333333333333,
+    "probation": 9.333333333333334
+   }
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Haiku 4.5",
+   "perRun": {
+    "audit": 11.333333333333334,
+    "dispute": 0.3333333333333333,
+    "judge": 39.0,
+    "probation": 9.0
+   }
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Sonnet 5",
+   "perRun": {
+    "audit": 9.333333333333334,
+    "dispute": 2.0,
+    "judge": 12.0,
+    "probation": 10.333333333333334
+   }
+  },
+  {
+   "executor": "Sonnet 5",
+   "judge": "Opus 5",
+   "perRun": {
+    "audit": 7.666666666666667,
+    "dispute": 0.6666666666666666,
+    "judge": 6.666666666666667,
+    "probation": 9.333333333333334
+   }
+  }
+ ]
+}

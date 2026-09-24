@@ -1,5 +1,6 @@
 node_modules/
 web/dist/
+# docs/paper/ 用到的 35 轮运行（附表 A）用 git add -f 纳入版本库，其余运行不提交
 runs/*
 !runs/.gitkeep
 .env

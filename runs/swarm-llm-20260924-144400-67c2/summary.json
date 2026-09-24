@@ -1,0 +1,158 @@
+{
+  "runId": "swarm-llm-20260924-144400-67c2",
+  "mode": "swarm-llm",
+  "config": {
+    "mode": "swarm-llm",
+    "n": 96,
+    "cells": 8,
+    "seed": 17,
+    "taskSource": {
+      "kind": "synthetic",
+      "difficulty": "hard"
+    },
+    "judge": "jev",
+    "llm": "openrouter",
+    "simPace": 1,
+    "llmReasoning": "off",
+    "escalationThreshold": 0.2,
+    "verifyThreshold": 0.4,
+    "leaseMs": 30000,
+    "maxCostUsd": 1.5,
+    "maxWallMs": 900000,
+    "llmConcurrency": 8,
+    "judgeConcurrency": 16,
+    "topology": "small-world",
+    "geneCapacity": 4,
+    "gossipEvery": 2,
+    "claimCandidates": 6,
+    "claimPolicy": "rule",
+    "auditRate": 0.1,
+    "probation": 2,
+    "reviewTrust": 0.55,
+    "quarantineTrust": 0.35,
+    "stuckAfter": 2,
+    "guardWindow": 8,
+    "guardMaxDisagreement": 0.5,
+    "inherit": false,
+    "evomapLookup": false,
+    "evomapPublish": false,
+    "publishGateTasks": 8,
+    "publishGateMinDelta": 1,
+    "cellModels": [],
+    "judgeModel": "anthropic/claude-haiku-4.5",
+    "voteBudgetTokens": 0
+  },
+  "simulated": false,
+  "metrics": {
+    "tasksTotal": 96,
+    "accepted": 96,
+    "correct": 86,
+    "accuracy": 0.8958333333333334,
+    "totalTokens": 136504,
+    "workTokens": 70567,
+    "coordinationTokens": 65937,
+    "costUsd": 0.3191079999999999,
+    "air": 0.6300181679657739,
+    "s1Decisions": 0,
+    "s2Decisions": 142,
+    "escalationRate": 1,
+    "meanJudgeLatencyMs": 1447.4137978521128,
+    "cellsAlive": 8,
+    "reopened": 0,
+    "echoAlarms": 0,
+    "genesAdopted": 56,
+    "passThroughErrorRate": 0,
+    "falseAcceptRate": 0.10416666666666667,
+    "falseAcceptVerifiedRate": 0.05357142857142857,
+    "coordinationShare": 0.48304079001347944,
+    "quarantined": 0,
+    "libraryHits": 0,
+    "inheritedGenes": 0,
+    "jevDown": false,
+    "accuracyApplicable": true,
+    "elapsedMs": 107162
+  },
+  "byPurpose": {
+    "solve": {
+      "calls": 157,
+      "inputTokens": 34194,
+      "outputTokens": 36373,
+      "totalTokens": 70567,
+      "costUsd": 0.21605900000000006,
+      "latencyMs": 418754.37883300014
+    },
+    "gene": {
+      "calls": 112,
+      "inputTokens": 11098,
+      "outputTokens": 3528,
+      "totalTokens": 14626,
+      "costUsd": 0.028738000000000003,
+      "latencyMs": 175139.50570299994
+    },
+    "adopt": {
+      "calls": 63,
+      "inputTokens": 16882,
+      "outputTokens": 2457,
+      "totalTokens": 19339,
+      "costUsd": 0.029167,
+      "latencyMs": 88245.93358300002
+    },
+    "verify": {
+      "calls": 74,
+      "inputTokens": 26646,
+      "outputTokens": 2898,
+      "totalTokens": 29544,
+      "costUsd": 0.041136,
+      "latencyMs": 110607.53942
+    },
+    "adjudicate": {
+      "calls": 5,
+      "inputTokens": 2033,
+      "outputTokens": 395,
+      "totalTokens": 2428,
+      "costUsd": 0.004008,
+      "latencyMs": 6679.286292000001
+    }
+  },
+  "calibration": {
+    "verify": [
+      {
+        "lo": 0,
+        "hi": 0.2,
+        "count": 35,
+        "meanPredicted": 0.1442857142857143,
+        "observedRate": 0.08571428571428572
+      },
+      {
+        "lo": 0.2,
+        "hi": 0.4,
+        "count": 0,
+        "meanPredicted": 0,
+        "observedRate": 0
+      },
+      {
+        "lo": 0.4,
+        "hi": 0.6,
+        "count": 2,
+        "meanPredicted": 0.5,
+        "observedRate": 0
+      },
+      {
+        "lo": 0.6,
+        "hi": 0.8,
+        "count": 17,
+        "meanPredicted": 0.75,
+        "observedRate": 0
+      },
+      {
+        "lo": 0.8,
+        "hi": 1,
+        "count": 20,
+        "meanPredicted": 0.8499999999999999,
+        "observedRate": 0.3
+      }
+    ]
+  },
+  "startedAt": 1790232240775,
+  "finishedAt": 1790232347938
+}

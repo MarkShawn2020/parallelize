@@ -1,5 +1,182 @@
 [
  {
+  "subset": "pooled",
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "规则",
+  "n": 384,
+  "jevOnly": 36,
+  "otherOnly": 17,
+  "diffPp": 4.947916666666667,
+  "ci95Pp": [
+   1.3020833333333335,
+   8.59375
+  ],
+  "p": 0.012660335802414213,
+  "pHolm": 0.05064134320965685
+ },
+ {
+  "subset": "pooled",
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Haiku 4.5",
+  "n": 384,
+  "jevOnly": 33,
+  "otherOnly": 16,
+  "diffPp": 4.427083333333333,
+  "ci95Pp": [
+   1.0416666666666665,
+   8.072916666666668
+  ],
+  "p": 0.021294114141387155,
+  "pHolm": 0.06388234242416146
+ },
+ {
+  "subset": "pooled",
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Sonnet 5",
+  "n": 384,
+  "jevOnly": 19,
+  "otherOnly": 17,
+  "diffPp": 0.5208333333333334,
+  "ci95Pp": [
+   -2.604166666666667,
+   3.6458333333333335
+  ],
+  "p": 0.8679394004284404,
+  "pHolm": 0.8679394004284404
+ },
+ {
+  "subset": "pooled",
+  "seeds": [
+   7,
+   11,
+   13,
+   17
+  ],
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Opus 5",
+  "n": 384,
+  "jevOnly": 28,
+  "otherOnly": 20,
+  "diffPp": 2.0833333333333335,
+  "ci95Pp": [
+   -1.3020833333333335,
+   5.729166666666666
+  ],
+  "p": 0.31232680747326924,
+  "pHolm": 0.6246536149465385
+ },
+ {
+  "subset": "pooled",
+  "seeds": [
+   7,
+   11,
+   13
+  ],
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "规则",
+  "n": 288,
+  "jevOnly": 11,
+  "otherOnly": 5,
+  "diffPp": 2.0833333333333335,
+  "ci95Pp": [
+   -0.6944444444444444,
+   4.861111111111112
+  ],
+  "p": 0.210113525390625,
+  "pHolm": 0.8404541015625
+ },
+ {
+  "subset": "pooled",
+  "seeds": [
+   7,
+   11,
+   13
+  ],
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Haiku 4.5",
+  "n": 288,
+  "jevOnly": 6,
+  "otherOnly": 3,
+  "diffPp": 1.0416666666666667,
+  "ci95Pp": [
+   -1.0416666666666665,
+   3.125
+  ],
+  "p": 0.5078125,
+  "pHolm": 1.0
+ },
+ {
+  "subset": "pooled",
+  "seeds": [
+   7,
+   11,
+   13
+  ],
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Sonnet 5",
+  "n": 288,
+  "jevOnly": 3,
+  "otherOnly": 4,
+  "diffPp": -0.3472222222222222,
+  "ci95Pp": [
+   -2.083333333333333,
+   1.3888888888888888
+  ],
+  "p": 1.0,
+  "pHolm": 1.0
+ },
+ {
+  "subset": "pooled",
+  "seeds": [
+   7,
+   11,
+   13
+  ],
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Opus 5",
+  "n": 288,
+  "jevOnly": 5,
+  "otherOnly": 3,
+  "diffPp": 0.6944444444444444,
+  "ci95Pp": [
+   -1.0416666666666665,
+   2.7777777777777777
+  ],
+  "p": 0.7265625,
+  "pHolm": 1.0
+ },
+ {
+  "subset": "v01",
+  "seeds": [
+   7,
+   11
+  ],
   "executor": "Haiku 4.5",
   "jev": "Jev",
   "other": "规则",
@@ -15,6 +192,11 @@
   "pHolm": 1.0
  },
  {
+  "subset": "v01",
+  "seeds": [
+   7,
+   11
+  ],
   "executor": "Haiku 4.5",
   "jev": "Jev",
   "other": "Haiku 4.5",
@@ -30,6 +212,11 @@
   "pHolm": 1.0
  },
  {
+  "subset": "v01",
+  "seeds": [
+   7,
+   11
+  ],
   "executor": "Haiku 4.5",
   "jev": "Jev",
   "other": "Sonnet 5",
@@ -45,6 +232,11 @@
   "pHolm": 1.0
  },
  {
+  "subset": "v01",
+  "seeds": [
+   7,
+   11
+  ],
   "executor": "Haiku 4.5",
   "jev": "Jev",
   "other": "Opus 5",
@@ -60,6 +252,11 @@
   "pHolm": 1.0
  },
  {
+  "subset": "v01",
+  "seeds": [
+   7,
+   11
+  ],
   "executor": "Sonnet 5",
   "jev": "Jev",
   "other": "规则",
@@ -75,6 +272,11 @@
   "pHolm": 0.03125
  },
  {
+  "subset": "v01",
+  "seeds": [
+   7,
+   11
+  ],
   "executor": "Sonnet 5",
   "jev": "Jev",
   "other": "Haiku 4.5",
@@ -90,6 +292,11 @@
   "pHolm": 0.09375
  },
  {
+  "subset": "v01",
+  "seeds": [
+   7,
+   11
+  ],
   "executor": "Sonnet 5",
   "jev": "Jev",
   "other": "Sonnet 5",
@@ -105,6 +312,11 @@
   "pHolm": 0.5
  },
  {
+  "subset": "v01",
+  "seeds": [
+   7,
+   11
+  ],
   "executor": "Sonnet 5",
   "jev": "Jev",
   "other": "Opus 5",
@@ -118,5 +330,161 @@
   ],
   "p": 0.125,
   "pHolm": 0.25
+ },
+ {
+  "subset": "new",
+  "seeds": [
+   13,
+   17
+  ],
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "规则",
+  "n": 192,
+  "jevOnly": 22,
+  "otherOnly": 8,
+  "diffPp": 7.291666666666667,
+  "ci95Pp": [
+   2.083333333333333,
+   13.020833333333334
+  ],
+  "p": 0.016124801710247993,
+  "pHolm": 0.06449920684099197
+ },
+ {
+  "subset": "new",
+  "seeds": [
+   13,
+   17
+  ],
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Haiku 4.5",
+  "n": 192,
+  "jevOnly": 21,
+  "otherOnly": 8,
+  "diffPp": 6.770833333333333,
+  "ci95Pp": [
+   1.5625,
+   12.5
+  ],
+  "p": 0.0241195447742939,
+  "pHolm": 0.0723586343228817
+ },
+ {
+  "subset": "new",
+  "seeds": [
+   13,
+   17
+  ],
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Sonnet 5",
+  "n": 192,
+  "jevOnly": 12,
+  "otherOnly": 8,
+  "diffPp": 2.0833333333333335,
+  "ci95Pp": [
+   -2.604166666666667,
+   6.770833333333333
+  ],
+  "p": 0.5034446716308594,
+  "pHolm": 0.5034446716308594
+ },
+ {
+  "subset": "new",
+  "seeds": [
+   13,
+   17
+  ],
+  "executor": "Haiku 4.5",
+  "jev": "Jev",
+  "other": "Opus 5",
+  "n": 192,
+  "jevOnly": 17,
+  "otherOnly": 7,
+  "diffPp": 5.208333333333333,
+  "ci95Pp": [
+   0.5208333333333333,
+   10.416666666666668
+  ],
+  "p": 0.06391465663909912,
+  "pHolm": 0.12782931327819824
+ },
+ {
+  "subset": "new",
+  "seeds": [
+   13
+  ],
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "规则",
+  "n": 96,
+  "jevOnly": 3,
+  "otherOnly": 5,
+  "diffPp": -2.0833333333333335,
+  "ci95Pp": [
+   -8.333333333333332,
+   3.125
+  ],
+  "p": 0.7265625,
+  "pHolm": 1.0
+ },
+ {
+  "subset": "new",
+  "seeds": [
+   13
+  ],
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Haiku 4.5",
+  "n": 96,
+  "jevOnly": 0,
+  "otherOnly": 3,
+  "diffPp": -3.125,
+  "ci95Pp": [
+   -7.291666666666667,
+   0.0
+  ],
+  "p": 0.25,
+  "pHolm": 1.0
+ },
+ {
+  "subset": "new",
+  "seeds": [
+   13
+  ],
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Sonnet 5",
+  "n": 96,
+  "jevOnly": 1,
+  "otherOnly": 4,
+  "diffPp": -3.125,
+  "ci95Pp": [
+   -8.333333333333332,
+   1.0416666666666665
+  ],
+  "p": 0.375,
+  "pHolm": 1.0
+ },
+ {
+  "subset": "new",
+  "seeds": [
+   13
+  ],
+  "executor": "Sonnet 5",
+  "jev": "Jev",
+  "other": "Opus 5",
+  "n": 96,
+  "jevOnly": 1,
+  "otherOnly": 3,
+  "diffPp": -2.0833333333333335,
+  "ci95Pp": [
+   -6.25,
+   2.083333333333333
+  ],
+  "p": 0.625,
+  "pHolm": 1.0
  }
 ]

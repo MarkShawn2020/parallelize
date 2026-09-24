@@ -2,61 +2,112 @@
  {
   "executor": "Haiku 4.5",
   "replaced": "Haiku 4.5",
-  "judgeSavingUsd": 0.07742804700000001,
-  "extraSolves": 43.5,
-  "extraSolveUsd": 0.07675823437217225,
-  "predictedNetUsd": -0.0006698126278277677,
-  "observedNetUsd": 0.0029874530000000843,
-  "reboundRatio": 0.9913492248121955
+  "judgeSavingUsd": 0.07571175050000002,
+  "extraSolves": 44.5,
+  "extraSolveUsd": 0.08069665620869214,
+  "predictedNetUsd": 0.004984905708692117,
+  "observedNetUsd": 0.0024084995000000498,
+  "reboundRatio": 1.0658405818881722,
+  "outOfSample": {
+   "usdPerSolveV01": 0.0017645571120039596,
+   "seeds": [
+    13,
+    17
+   ],
+   "predictedNetUsd": 0.006291894596180167,
+   "observedNetUsd": 0.0018295459999999597
+  }
  },
  {
   "executor": "Haiku 4.5",
   "replaced": "Sonnet 5",
-  "judgeSavingUsd": 0.3622365469999999,
-  "extraSolves": 58.5,
-  "extraSolveUsd": 0.10322659105223164,
-  "predictedNetUsd": -0.25900995594776827,
-  "observedNetUsd": -0.2520485469999996,
-  "reboundRatio": 0.284970116646545
+  "judgeSavingUsd": 0.3505947505,
+  "extraSolves": 61.0,
+  "extraSolveUsd": 0.11061788828607237,
+  "predictedNetUsd": -0.2399768622139276,
+  "observedNetUsd": -0.24099550049999985,
+  "reboundRatio": 0.3155149588757815,
+  "outOfSample": {
+   "usdPerSolveV01": 0.0017645571120039596,
+   "seeds": [
+    13,
+    17
+   ],
+   "predictedNetUsd": -0.22690357738774863,
+   "observedNetUsd": -0.22994245400000013
+  }
  },
  {
   "executor": "Haiku 4.5",
   "replaced": "Opus 5",
-  "judgeSavingUsd": 0.5157775469999999,
-  "extraSolves": 68.0,
-  "extraSolveUsd": 0.11998988361626925,
-  "predictedNetUsd": -0.3957876633837306,
-  "observedNetUsd": -0.39709254699999946,
-  "reboundRatio": 0.2326388271730434
+  "judgeSavingUsd": 0.5119127504999997,
+  "extraSolves": 73.0,
+  "extraSolveUsd": 0.1323787843423489,
+  "predictedNetUsd": -0.37953396615765084,
+  "observedNetUsd": -0.3815187504999995,
+  "reboundRatio": 0.2585963803656986,
+  "outOfSample": {
+   "usdPerSolveV01": 0.0017645571120039596,
+   "seeds": [
+    13,
+    17
+   ],
+   "predictedNetUsd": -0.3704124992636908,
+   "observedNetUsd": -0.3659449539999996
+  }
  },
  {
   "executor": "Sonnet 5",
   "replaced": "Haiku 4.5",
-  "judgeSavingUsd": 0.07507914699999998,
-  "extraSolves": 40.5,
-  "extraSolveUsd": 0.1957397683347161,
-  "predictedNetUsd": 0.12066062133471611,
-  "observedNetUsd": 0.11909385300000097,
-  "reboundRatio": 2.6071123095566886
+  "judgeSavingUsd": 0.07300448399999998,
+  "extraSolves": 36.666666666666686,
+  "extraSolveUsd": 0.17901114076146432,
+  "predictedNetUsd": 0.10600665676146434,
+  "observedNetUsd": 0.09774218266666701,
+  "reboundRatio": 2.4520567909426547,
+  "outOfSample": {
+   "usdPerSolveV01": 0.004833080699622619,
+   "seeds": [
+    13
+   ],
+   "predictedNetUsd": 0.07130418228905597,
+   "observedNetUsd": 0.05503884199999942
+  }
  },
  {
   "executor": "Sonnet 5",
   "replaced": "Sonnet 5",
-  "judgeSavingUsd": 0.309575147,
-  "extraSolves": 64.5,
-  "extraSolveUsd": 0.31173370512565896,
-  "predictedNetUsd": 0.0021585581256589603,
-  "observedNetUsd": 0.011716853000000804,
-  "reboundRatio": 1.0069726466952431
+  "judgeSavingUsd": 0.30536381733333334,
+  "extraSolves": 62.666666666666686,
+  "extraSolveUsd": 0.3059463133014117,
+  "predictedNetUsd": 0.0005824959680783559,
+  "observedNetUsd": 0.0006355160000001137,
+  "reboundRatio": 1.0019075474401817,
+  "outOfSample": {
+   "usdPerSolveV01": 0.004833080699622619,
+   "seeds": [
+    13
+   ],
+   "predictedNetUsd": -0.011789396722265366,
+   "observedNetUsd": -0.021527158000001045
+  }
  },
  {
   "executor": "Sonnet 5",
   "replaced": "Opus 5",
-  "judgeSavingUsd": 0.45533864699999993,
-  "extraSolves": 75.0,
-  "extraSolveUsd": 0.36248105247169643,
-  "predictedNetUsd": -0.0928575945283035,
-  "observedNetUsd": -0.09099364699999946,
-  "reboundRatio": 0.7960691561322633
+  "judgeSavingUsd": 0.4737348173333332,
+  "extraSolves": 72.00000000000001,
+  "extraSolveUsd": 0.35151278549523896,
+  "predictedNetUsd": -0.12222203183809427,
+  "observedNetUsd": -0.12377948399999972,
+  "reboundRatio": 0.7420032740551231,
+  "outOfSample": {
+   "usdPerSolveV01": 0.004833080699622619,
+   "seeds": [
+    13
+   ],
+   "predictedNetUsd": -0.19154383182490703,
+   "observedNetUsd": -0.1893511579999999
+  }
  }
 ]
